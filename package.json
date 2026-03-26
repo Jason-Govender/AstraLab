@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "antd": "^6.3.4",
+    "antd-style": "^4.1.0",
+    "react-redux": "^9.2.0",
+    "redux": "^5.0.1",
+    "redux-actions": "^3.0.3"
+  }
+}
