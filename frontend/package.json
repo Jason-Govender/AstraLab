@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test:api": "node ./src/lib/api/runtime.test.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "next": "16.2.1",
