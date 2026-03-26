@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -7,209 +8,134 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Abp.AspNetCore.TestBase;
-using Abp.Authorization.Users;
-using Abp.Extensions;
 using Abp.Json;
-using Abp.MultiTenancy;
 using Abp.Web.Models;
-using AstraLab.EntityFrameworkCore;
 using AstraLab.Models.TokenAuth;
-using AstraLab.Web.Startup;
-using AngleSharp.Html.Dom;
-using AngleSharp.Html.Parser;
+using AstraLab.Sessions.Dto;
+using AstraLab.Web.Host.Startup;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Shouldly;
 
 namespace AstraLab.Web.Tests
 {
     public abstract class AstraLabWebTestBase : AbpAspNetCoreIntegratedTestBase<Startup>
     {
-        protected static readonly Lazy<string> ContentRootFolder;
-
-        static AstraLabWebTestBase()
+        private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions
         {
-            ContentRootFolder = new Lazy<string>(WebContentDirectoryFinder.CalculateContentRootFolder, true);
-        }
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
 
         protected override IWebHostBuilder CreateWebHostBuilder()
         {
+            Environment.SetEnvironmentVariable("App__CorsOrigins", "http://localhost:3000,https://app.example.com");
+
             return base
                 .CreateWebHostBuilder()
-                .UseContentRoot(ContentRootFolder.Value)
-                .UseSetting(WebHostDefaults.ApplicationKey, typeof(AstraLabWebMvcModule).Assembly.FullName);
+                .UseEnvironment(Environments.Development)
+                .UseContentRoot(GetHostProjectPath())
+                .UseSetting(WebHostDefaults.ApplicationKey, typeof(AstraLab.Web.Host.Startup.Startup).Assembly.FullName);
         }
 
-        #region Get response
-
-        protected async Task<T> GetResponseAsObjectAsync<T>(string url,
-            HttpStatusCode expectedStatusCode = HttpStatusCode.OK)
+        protected async Task<T> GetResponseAsObjectAsync<T>(
+            string url,
+            HttpStatusCode expectedStatusCode = HttpStatusCode.OK,
+            HttpRequestMessage request = null)
         {
-            var strResponse = await GetResponseAsStringAsync(url, expectedStatusCode);
-            return JsonSerializer.Deserialize<T>(strResponse, new JsonSerializerOptions()
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            var strResponse = await GetResponseAsStringAsync(url, expectedStatusCode, request);
+            return JsonSerializer.Deserialize<T>(strResponse, JsonSerializerOptions);
         }
 
-        protected async Task<string> GetResponseAsStringAsync(string url,
-            HttpStatusCode expectedStatusCode = HttpStatusCode.OK)
+        protected async Task<string> GetResponseAsStringAsync(
+            string url,
+            HttpStatusCode expectedStatusCode = HttpStatusCode.OK,
+            HttpRequestMessage request = null)
         {
-            var response = await GetResponseAsync(url, expectedStatusCode);
+            var response = await GetResponseAsync(url, expectedStatusCode, request);
             return await response.Content.ReadAsStringAsync();
         }
 
-        protected async Task<HttpResponseMessage> GetResponseAsync(string url,
-            HttpStatusCode expectedStatusCode = HttpStatusCode.OK)
+        protected async Task<HttpResponseMessage> GetResponseAsync(
+            string url,
+            HttpStatusCode expectedStatusCode = HttpStatusCode.OK,
+            HttpRequestMessage request = null)
         {
-            var response = await Client.GetAsync(url);
-            response.StatusCode.ShouldBe(expectedStatusCode);
+            var httpRequest = request ?? new HttpRequestMessage(HttpMethod.Get, url);
+            if (httpRequest.RequestUri == null)
+            {
+                httpRequest.RequestUri = new Uri(url, UriKind.Relative);
+            }
+
+            var response = await Client.SendAsync(httpRequest);
+            if (expectedStatusCode != 0)
+            {
+                response.StatusCode.ShouldBe(expectedStatusCode);
+            }
+
             return response;
         }
 
-        #endregion
-
-        #region Authenticate
-
-        /// <summary>
-        /// /api/TokenAuth/Authenticate
-        /// TokenAuthController
-        /// </summary>
-        /// <param name="tenancyName"></param>
-        /// <param name="input"></param>
-        /// <returns></returns>
-        protected async Task AuthenticateAsync(string tenancyName, AuthenticateModel input)
+        protected async Task<string> GetAntiForgeryTokenAsync(string origin = "http://localhost:3000")
         {
-            if (tenancyName.IsNullOrWhiteSpace())
+            var request = new HttpRequestMessage(HttpMethod.Get, "/AntiForgery/GetToken");
+            request.Headers.Add("Origin", origin);
+
+            var response = await GetResponseAsync("/AntiForgery/GetToken", HttpStatusCode.OK, request);
+            return response.Headers.GetValues(AstraLabHostHttpSecurity.AntiForgeryHeaderName).Single();
+        }
+
+        protected async Task<AuthenticateResultModel> AuthenticateAsync(
+            AuthenticateModel input,
+            string origin = "http://localhost:3000",
+            int? tenantId = 1)
+        {
+            var antiForgeryToken = await GetAntiForgeryTokenAsync(origin);
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/TokenAuth/Authenticate");
+            request.Headers.Add("Origin", origin);
+            request.Headers.Add(AstraLabHostHttpSecurity.AntiForgeryHeaderName, antiForgeryToken);
+
+            if (tenantId.HasValue)
             {
-                var tenant = UsingDbContext(context => context.Tenants.FirstOrDefault(t => t.TenancyName == tenancyName));
-                if (tenant != null)
-                {
-                    AbpSession.TenantId = tenant.Id;
-                    Client.DefaultRequestHeaders.Add("Abp.TenantId", tenant.Id.ToString());  //Set TenantId
-                }
+                request.Headers.Add("Abp.TenantId", tenantId.Value.ToString());
             }
 
-            var response = await Client.PostAsync("/api/TokenAuth/Authenticate",
-                new StringContent(input.ToJsonString(), Encoding.UTF8, "application/json"));
-            response.StatusCode.ShouldBe(HttpStatusCode.OK);
-            var result = JsonSerializer.Deserialize<AjaxResponse<AuthenticateResultModel>>(await response.Content.ReadAsStringAsync(), new JsonSerializerOptions()
+            request.Content = new StringContent(input.ToJsonString(), Encoding.UTF8, "application/json");
+
+            var response = await GetResponseAsync("/api/TokenAuth/Authenticate", HttpStatusCode.OK, request);
+            var payload = JsonSerializer.Deserialize<AjaxResponse<AuthenticateResultModel>>(
+                await response.Content.ReadAsStringAsync(),
+                JsonSerializerOptions);
+
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", payload.Result.AccessToken);
+
+            if (tenantId.HasValue)
             {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.Result.AccessToken);
-
-            AbpSession.UserId = result.Result.UserId;
-        }
-
-        #endregion
-
-        #region Login
-
-        protected void LoginAsHostAdmin()
-        {
-            LoginAsHost(AbpUserBase.AdminUserName);
-        }
-
-        protected void LoginAsDefaultTenantAdmin()
-        {
-            LoginAsTenant(AbpTenantBase.DefaultTenantName, AbpUserBase.AdminUserName);
-        }
-
-        protected void LoginAsHost(string userName)
-        {
-            AbpSession.TenantId = null;
-
-            var user =
-                UsingDbContext(
-                    context =>
-                        context.Users.FirstOrDefault(u => u.TenantId == AbpSession.TenantId && u.UserName == userName));
-            if (user == null)
-            {
-                throw new Exception("There is no user: " + userName + " for host.");
+                Client.DefaultRequestHeaders.Remove("Abp.TenantId");
+                Client.DefaultRequestHeaders.Add("Abp.TenantId", tenantId.Value.ToString());
             }
 
-            AbpSession.UserId = user.Id;
+            return payload.Result;
         }
 
-        protected void LoginAsTenant(string tenancyName, string userName)
+        protected async Task<GetCurrentLoginInformationsOutput> GetCurrentLoginInformationsAsync()
         {
-            var tenant = UsingDbContext(context => context.Tenants.FirstOrDefault(t => t.TenancyName == tenancyName));
-            if (tenant == null)
-            {
-                throw new Exception("There is no tenant: " + tenancyName);
-            }
+            var payload = await GetResponseAsObjectAsync<AjaxResponse<GetCurrentLoginInformationsOutput>>(
+                "/api/services/app/Session/GetCurrentLoginInformations");
 
-            AbpSession.TenantId = tenant.Id;
-
-            var user =
-                UsingDbContext(
-                    context =>
-                        context.Users.FirstOrDefault(u => u.TenantId == AbpSession.TenantId && u.UserName == userName));
-            if (user == null)
-            {
-                throw new Exception("There is no user: " + userName + " for tenant: " + tenancyName);
-            }
-
-            AbpSession.UserId = user.Id;
+            return payload.Result;
         }
 
-        #endregion
-
-        #region UsingDbContext
-
-        protected void UsingDbContext(Action<AstraLabDbContext> action)
+        private static string GetHostProjectPath()
         {
-            using (var context = IocManager.Resolve<AstraLabDbContext>())
-            {
-                action(context);
-                context.SaveChanges();
-            }
+            return Path.GetFullPath(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "src",
+                    "AstraLab.Web.Host"));
         }
-
-        protected T UsingDbContext<T>(Func<AstraLabDbContext, T> func)
-        {
-            T result;
-
-            using (var context = IocManager.Resolve<AstraLabDbContext>())
-            {
-                result = func(context);
-                context.SaveChanges();
-            }
-
-            return result;
-        }
-
-        protected async Task UsingDbContextAsync(Func<AstraLabDbContext, Task> action)
-        {
-            using (var context = IocManager.Resolve<AstraLabDbContext>())
-            {
-                await action(context);
-                await context.SaveChangesAsync(true);
-            }
-        }
-
-        protected async Task<T> UsingDbContextAsync<T>(Func<AstraLabDbContext, Task<T>> func)
-        {
-            T result;
-
-            using (var context = IocManager.Resolve<AstraLabDbContext>())
-            {
-                result = await func(context);
-                await context.SaveChangesAsync(true);
-            }
-
-            return result;
-        }
-
-        #endregion
-
-        #region ParseHtml
-
-        protected IHtmlDocument ParseHtml(string htmlString)
-        {
-            return new HtmlParser().ParseDocument(htmlString);
-        }
-
-        #endregion
     }
 }

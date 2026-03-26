@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using Abp.AspNetCore;
+using Abp.AspNetCore.Mvc.Antiforgery;
+using Abp.AspNetCore.SignalR.Hubs;
 using Abp.AspNetCore.TestBase;
 using Abp.Dependency;
-using AstraLab.Authentication.JwtBearer;
 using AstraLab.Configuration;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Identity;
-using AstraLab.Web.Resources;
-using AstraLab.Web.Startup;
+using AstraLab.Web.Host.Startup;
 using Castle.MicroKernel.Registration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -31,14 +31,17 @@ namespace AstraLab.Web.Tests
         {
             services.AddEntityFrameworkInMemoryDatabase();
 
-            services.AddMvc();
-            
+            services.AddControllersWithViews(options =>
+            {
+                options.Filters.Add(new AbpAutoValidateAntiforgeryTokenAttribute());
+            });
+
             IdentityRegistrar.Register(services);
             AuthConfigurer.Configure(services, _appConfiguration);
-            
-            services.AddScoped<IWebResourceManager, WebResourceManager>();
+            services.AddSignalR();
+            services.AddAstraLabHostAntiforgery();
+            services.AddAstraLabHostCors(_appConfiguration);
 
-            //Configure Abp and Dependency Injection
             return services.AddAbp<AstraLabWebTestModule>(options =>
             {
                 options.SetupTest();
@@ -49,22 +52,19 @@ namespace AstraLab.Web.Tests
         {
             UseInMemoryDb(app.ApplicationServices);
 
-            app.UseAbp(); //Initializes ABP framework.
-
-            app.UseExceptionHandler("/Error");
-
+            app.UseAbp(options => { options.UseAbpRequestLocalization = false; });
             app.UseStaticFiles();
             app.UseRouting();
-
+            app.UseCors(AstraLabHostHttpSecurity.DefaultCorsPolicyName);
             app.UseAuthentication();
-
-            app.UseJwtTokenMiddleware();
-
             app.UseAuthorization();
+            app.UseAbpRequestLocalization();
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapHub<AbpCommonHub>("/signalr");
                 endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapControllerRoute("defaultWithArea", "{area}/{controller=Home}/{action=Index}/{id?}");
             });
         }
 
@@ -75,12 +75,10 @@ namespace AstraLab.Web.Tests
             var options = builder.Options;
 
             var iocManager = serviceProvider.GetRequiredService<IIocManager>();
-            iocManager.IocContainer
-                .Register(
-                    Component.For<DbContextOptions<AstraLabDbContext>>()
-                        .Instance(options)
-                        .LifestyleSingleton()
-                );
+            iocManager.IocContainer.Register(
+                Component.For<DbContextOptions<AstraLabDbContext>>()
+                    .Instance(options)
+                    .LifestyleSingleton());
         }
     }
 }

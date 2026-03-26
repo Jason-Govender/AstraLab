@@ -11,7 +11,7 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AstraLab.Web.Mvc\AstraLab.Web.Mvc.csproj" />
+    <ProjectReference Include="..\..\src\AstraLab.Web.Host\AstraLab.Web.Host.csproj" />
     <ProjectReference Include="..\AstraLab.Tests\AstraLab.Tests.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -24,7 +24,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="AngleSharp" Version="1.1.2" />
     <PackageReference Include="Abp.AspNetCore.TestBase" Version="9.4.1" />
   </ItemGroup>
 </Project>
