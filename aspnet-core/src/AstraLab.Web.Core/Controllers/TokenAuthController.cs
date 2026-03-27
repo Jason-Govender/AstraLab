@@ -11,6 +11,7 @@ using Abp.MultiTenancy;
 using Abp.Runtime.Security;
 using AstraLab.Authentication.JwtBearer;
 using AstraLab.Authorization;
+using AstraLab.Authorization.Accounts;
 using AstraLab.Authorization.Users;
 using AstraLab.Models.TokenAuth;
 using AstraLab.MultiTenancy;
@@ -21,18 +22,18 @@ namespace AstraLab.Controllers
     public class TokenAuthController : AstraLabControllerBase
     {
         private readonly LogInManager _logInManager;
-        private readonly ITenantCache _tenantCache;
+        private readonly AnonymousTenantResolver _anonymousTenantResolver;
         private readonly AbpLoginResultTypeHelper _abpLoginResultTypeHelper;
         private readonly TokenAuthConfiguration _configuration;
 
         public TokenAuthController(
             LogInManager logInManager,
-            ITenantCache tenantCache,
+            AnonymousTenantResolver anonymousTenantResolver,
             AbpLoginResultTypeHelper abpLoginResultTypeHelper,
             TokenAuthConfiguration configuration)
         {
             _logInManager = logInManager;
-            _tenantCache = tenantCache;
+            _anonymousTenantResolver = anonymousTenantResolver;
             _abpLoginResultTypeHelper = abpLoginResultTypeHelper;
             _configuration = configuration;
         }
@@ -40,10 +41,12 @@ namespace AstraLab.Controllers
         [HttpPost]
         public async Task<AuthenticateResultModel> Authenticate([FromBody] AuthenticateModel model)
         {
+            var resolvedTenant = await _anonymousTenantResolver.ResolveAsync(model.TenancyName, allowHost: true);
+
             var loginResult = await GetLoginResultAsync(
                 model.UserNameOrEmailAddress,
                 model.Password,
-                GetTenancyNameOrNull()
+                resolvedTenant.TenancyName
             );
 
             var accessToken = CreateAccessToken(CreateJwtClaims(loginResult.Identity));
@@ -55,16 +58,6 @@ namespace AstraLab.Controllers
                 ExpireInSeconds = (int)_configuration.Expiration.TotalSeconds,
                 UserId = loginResult.User.Id
             };
-        }
-
-        private string GetTenancyNameOrNull()
-        {
-            if (!AbpSession.TenantId.HasValue)
-            {
-                return null;
-            }
-
-            return _tenantCache.GetOrNull(AbpSession.TenantId.Value)?.TenancyName;
         }
 
         private async Task<AbpLoginResult<Tenant, User>> GetLoginResultAsync(string usernameOrEmailAddress, string password, string tenancyName)

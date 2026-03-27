@@ -254,3 +254,4 @@ paket-files/
 src/AstraLab.Web.Mvc/secrets.json
 src/AstraLab.Web.Host/secrets.json
 src/AstraLab.Migrator/secrets.json
+.dotnet/

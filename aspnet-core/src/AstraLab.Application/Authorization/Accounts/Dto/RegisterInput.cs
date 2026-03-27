@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using Abp.Auditing;
 using Abp.Authorization.Users;
 using Abp.Extensions;
+using Abp.MultiTenancy;
 using AstraLab.Validation;
 
 namespace AstraLab.Authorization.Accounts.Dto
@@ -33,6 +34,9 @@ namespace AstraLab.Authorization.Accounts.Dto
 
         [DisableAuditing]
         public string CaptchaResponse { get; set; }
+
+        [StringLength(AbpTenantBase.MaxTenancyNameLength)]
+        public string TenancyName { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {

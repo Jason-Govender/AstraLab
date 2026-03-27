@@ -12,11 +12,14 @@ namespace AstraLab.Authorization.Accounts
         public const string PasswordRegex = "(?=^.{8,}$)(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\\s)[0-9a-zA-Z!@#$%^&*()]*$";
 
         private readonly UserRegistrationManager _userRegistrationManager;
+        private readonly AnonymousTenantResolver _anonymousTenantResolver;
 
         public AccountAppService(
-            UserRegistrationManager userRegistrationManager)
+            UserRegistrationManager userRegistrationManager,
+            AnonymousTenantResolver anonymousTenantResolver)
         {
             _userRegistrationManager = userRegistrationManager;
+            _anonymousTenantResolver = anonymousTenantResolver;
         }
 
         public async Task<IsTenantAvailableOutput> IsTenantAvailable(IsTenantAvailableInput input)
@@ -37,12 +40,15 @@ namespace AstraLab.Authorization.Accounts
 
         public async Task<RegisterOutput> Register(RegisterInput input)
         {
+            var resolvedTenant = await _anonymousTenantResolver.ResolveAsync(input.TenancyName, allowHost: false);
+
             var user = await _userRegistrationManager.RegisterAsync(
                 input.Name,
                 input.Surname,
                 input.EmailAddress,
                 input.UserName,
                 input.Password,
+                resolvedTenant.TenantId.Value,
                 true // Assumed email address is always confirmed. Change this if you want to implement email confirmation.
             );
 

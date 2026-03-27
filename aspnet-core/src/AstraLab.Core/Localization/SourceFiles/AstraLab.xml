@@ -9,6 +9,8 @@
     <text name="InvalidUserNameOrPassword" value="Invalid user name or password" />
     <text name="ThereIsNoTenantDefinedWithName{0}" value="There is no tenant defined with name {0}" />
     <text name="TenantIsNotActive" value="Tenant {0} is not active." />
+    <text name="TenantContextMismatch" value="Tenant in the request body does not match the current request tenant context." />
+    <text name="TenantIsRequiredForRegistration" value="Tenant is required for registration." />
     <text name="UserIsNotActiveAndCanNotLogin" value="User {0} is not active and can not log in." />
     <text name="UserEmailIsNotConfirmedAndCanNotLogin">Your email address is not confirmed. You can not login.</text>
     <text name="UserLockedOutMessage">The user account has been locked out. Please try again later.</text>
