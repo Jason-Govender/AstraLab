@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Abp.Authorization.Users;
 using Abp.Domain.Services;
 using Abp.IdentityFramework;
-using Abp.Runtime.Session;
 using Abp.UI;
 using AstraLab.Authorization.Roles;
 using AstraLab.MultiTenancy;
@@ -16,8 +15,6 @@ namespace AstraLab.Authorization.Users
 {
     public class UserRegistrationManager : DomainService
     {
-        public IAbpSession AbpSession { get; set; }
-
         private readonly TenantManager _tenantManager;
         private readonly UserManager _userManager;
         private readonly RoleManager _roleManager;
@@ -33,59 +30,40 @@ namespace AstraLab.Authorization.Users
             _userManager = userManager;
             _roleManager = roleManager;
             _passwordHasher = passwordHasher;
-
-            AbpSession = NullAbpSession.Instance;
         }
 
-        public async Task<User> RegisterAsync(string name, string surname, string emailAddress, string userName, string plainPassword, bool isEmailConfirmed)
+        public async Task<User> RegisterAsync(string name, string surname, string emailAddress, string userName, string plainPassword, int tenantId, bool isEmailConfirmed)
         {
-            CheckForTenant();
+            var tenant = await GetActiveTenantAsync(tenantId);
 
-            var tenant = await GetActiveTenantAsync();
-
-            var user = new User
+            using (CurrentUnitOfWork.SetTenantId(tenant.Id))
             {
-                TenantId = tenant.Id,
-                Name = name,
-                Surname = surname,
-                EmailAddress = emailAddress,
-                IsActive = true,
-                UserName = userName,
-                IsEmailConfirmed = isEmailConfirmed,
-                Roles = new List<UserRole>()
-            };
+                var user = new User
+                {
+                    TenantId = tenant.Id,
+                    Name = name,
+                    Surname = surname,
+                    EmailAddress = emailAddress,
+                    IsActive = true,
+                    UserName = userName,
+                    IsEmailConfirmed = isEmailConfirmed,
+                    Roles = new List<UserRole>()
+                };
 
-            user.SetNormalizedNames();
-           
-            foreach (var defaultRole in await _roleManager.Roles.Where(r => r.IsDefault).ToListAsync())
-            {
-                user.Roles.Add(new UserRole(tenant.Id, user.Id, defaultRole.Id));
+                user.SetNormalizedNames();
+
+                foreach (var defaultRole in await _roleManager.Roles.Where(r => r.IsDefault).ToListAsync())
+                {
+                    user.Roles.Add(new UserRole(tenant.Id, user.Id, defaultRole.Id));
+                }
+
+                await _userManager.InitializeOptionsAsync(tenant.Id);
+
+                CheckErrors(await _userManager.CreateAsync(user, plainPassword));
+                await CurrentUnitOfWork.SaveChangesAsync();
+
+                return user;
             }
-
-            await _userManager.InitializeOptionsAsync(tenant.Id);
-
-            CheckErrors(await _userManager.CreateAsync(user, plainPassword));
-            await CurrentUnitOfWork.SaveChangesAsync();
-
-            return user;
-        }
-
-        private void CheckForTenant()
-        {
-            if (!AbpSession.TenantId.HasValue)
-            {
-                throw new InvalidOperationException("Can not register host users!");
-            }
-        }
-
-        private async Task<Tenant> GetActiveTenantAsync()
-        {
-            if (!AbpSession.TenantId.HasValue)
-            {
-                return null;
-            }
-
-            return await GetActiveTenantAsync(AbpSession.TenantId.Value);
         }
 
         private async Task<Tenant> GetActiveTenantAsync(int tenantId)

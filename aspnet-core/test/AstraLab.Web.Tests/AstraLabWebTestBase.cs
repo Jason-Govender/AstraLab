@@ -79,7 +79,7 @@ namespace AstraLab.Web.Tests
         /// <returns></returns>
         protected async Task AuthenticateAsync(string tenancyName, AuthenticateModel input)
         {
-            if (tenancyName.IsNullOrWhiteSpace())
+            if (!tenancyName.IsNullOrWhiteSpace())
             {
                 var tenant = UsingDbContext(context => context.Tenants.FirstOrDefault(t => t.TenancyName == tenancyName));
                 if (tenant != null)
