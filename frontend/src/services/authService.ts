@@ -26,6 +26,22 @@ interface AuthenticateResultResponse {
   UserId?: number;
 }
 
+function extractAuthenticatePayload(
+  payload: AbpApiResponse<AuthenticateResultResponse> | AuthenticateResultResponse,
+): AuthenticateResultResponse {
+  if (isWrappedAuthenticateResponse(payload)) {
+    return payload.result;
+  }
+
+  return payload;
+}
+
+function isWrappedAuthenticateResponse(
+  payload: AbpApiResponse<AuthenticateResultResponse> | AuthenticateResultResponse,
+): payload is AbpApiResponse<AuthenticateResultResponse> {
+  return "result" in payload && typeof payload.result === "object" && payload.result !== null;
+}
+
 function normalizeAuthenticateResult(
   payload: AuthenticateResultResponse,
 ): AuthenticateResult {
@@ -55,7 +71,9 @@ function normalizeAuthenticateResult(
 }
 
 export async function authenticate(requestPayload: LoginRequest) {
-  const response = await axiosInstance.post<AuthenticateResultResponse>(
+  const response = await axiosInstance.post<
+    AbpApiResponse<AuthenticateResultResponse> | AuthenticateResultResponse
+  >(
     TOKEN_AUTH_ENDPOINT,
     requestPayload,
     {
@@ -63,7 +81,7 @@ export async function authenticate(requestPayload: LoginRequest) {
     },
   );
 
-  return normalizeAuthenticateResult(response.data);
+  return normalizeAuthenticateResult(extractAuthenticatePayload(response.data));
 }
 
 export async function registerAccount(requestPayload: RegisterRequest) {
