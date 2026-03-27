@@ -11,7 +11,7 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AstraLab.Web.Host\AstraLab.Web.Host.csproj" />
+    <ProjectReference Include="..\..\src\AstraLab.Web.Mvc\AstraLab.Web.Mvc.csproj" />
     <ProjectReference Include="..\AstraLab.Tests\AstraLab.Tests.csproj" />
   </ItemGroup>
   <ItemGroup>

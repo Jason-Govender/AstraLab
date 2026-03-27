@@ -3,13 +3,13 @@ using Abp.AspNetCore.TestBase;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
 using AstraLab.EntityFrameworkCore;
-using AstraLab.Web.Host.Startup;
+using AstraLab.Web.Startup;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 
 namespace AstraLab.Web.Tests
 {
     [DependsOn(
-        typeof(AstraLabWebHostModule),
+        typeof(AstraLabWebMvcModule),
         typeof(AbpAspNetCoreTestBaseModule)
     )]
     public class AstraLabWebTestModule : AbpModule
@@ -32,7 +32,7 @@ namespace AstraLab.Web.Tests
         public override void PostInitialize()
         {
             IocManager.Resolve<ApplicationPartManager>()
-                .AddApplicationPartsIfNotAddedBefore(typeof(AstraLabWebHostModule).Assembly);
+                .AddApplicationPartsIfNotAddedBefore(typeof(AstraLabWebMvcModule).Assembly);
         }
     }
 }

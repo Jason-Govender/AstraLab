@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test:e2e": "playwright test"
+    "lint": "eslint"
   },
   "dependencies": {
     "next": "16.2.1",
@@ -15,7 +14,6 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
