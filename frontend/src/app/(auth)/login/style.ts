@@ -193,6 +193,12 @@ export const useStyles = createStyles(({ token, css }) => ({
     width: 100%;
   `,
 
+  alert: css`
+    margin-bottom: 20px;
+    border-color: rgba(255, 95, 95, 0.32) !important;
+    background: rgba(79, 20, 20, 0.34) !important;
+  `,
+
   fieldRow: css`
     margin-bottom: 20px;
 
@@ -205,6 +211,11 @@ export const useStyles = createStyles(({ token, css }) => ({
     .ant-form-item-explain-error {
       margin-top: 8px;
     }
+  `,
+
+  helperText: css`
+    color: ${token.colorTextSecondary};
+    font-size: 12px;
   `,
 
   input: css`

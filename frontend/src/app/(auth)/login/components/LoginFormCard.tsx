@@ -1,15 +1,11 @@
-import { Button, Card, Divider, Form, Input, Typography } from "antd";
-import type { Store } from "antd/es/form/interface";
+import { Alert, Button, Card, Divider, Form, Input, Typography } from "antd";
+import type { LoginFormValues } from "@/types/auth";
 import { useStyles } from "../style";
 
 const { Paragraph, Text, Title } = Typography;
 
-interface LoginFormValues extends Store {
-  email: string;
-  password: string;
-}
-
 interface LoginFormCardProps {
+  errorMessage?: string;
   isSubmitting: boolean;
   onSubmit: (values: LoginFormValues) => Promise<void>;
   onForgotPassword: () => void;
@@ -17,6 +13,7 @@ interface LoginFormCardProps {
 }
 
 export function LoginFormCard({
+  errorMessage,
   isSubmitting,
   onSubmit,
   onForgotPassword,
@@ -41,13 +38,24 @@ export function LoginFormCard({
         onFinish={onSubmit}
         className={styles.form}
       >
+        {errorMessage ? (
+          <Alert
+            type="error"
+            message={errorMessage}
+            showIcon
+            className={styles.alert}
+          />
+        ) : null}
+
         <Form.Item<LoginFormValues>
-          label="Email"
-          name="email"
+          label="Email or Username"
+          name="userNameOrEmailAddress"
           className={styles.fieldRow}
           rules={[
-            { required: true, message: "Please enter your email" },
-            { type: "email", message: "Enter a valid email address" },
+            {
+              required: true,
+              message: "Please enter your email address or username",
+            },
           ]}
         >
           <Input
@@ -62,13 +70,30 @@ export function LoginFormCard({
           name="password"
           className={styles.fieldRow}
           rules={[{ required: true, message: "Please enter your password" }]}
-        >
-          <Input.Password
-            size="large"
-            placeholder="••••••••••••"
-            className={styles.input}
-          />
-        </Form.Item>
+          >
+            <Input.Password
+              size="large"
+              placeholder="••••••••••••"
+              className={styles.input}
+            />
+          </Form.Item>
+
+          <Form.Item<LoginFormValues>
+            label="Tenant"
+            name="tenancyName"
+            className={styles.fieldRow}
+            extra={
+              <span className={styles.helperText}>
+                Leave blank to use the Default tenant
+              </span>
+            }
+          >
+            <Input
+              size="large"
+              placeholder="Default"
+              className={styles.input}
+            />
+          </Form.Item>
 
         <div className={styles.actionsRow}>
           <Button

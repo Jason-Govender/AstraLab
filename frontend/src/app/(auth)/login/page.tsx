@@ -1,18 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { App, Col, Row, Typography } from "antd";
-import type { Store } from "antd/es/form/interface";
+import { useAuthActions, useAuthState } from "@/providers/authProvider";
+import type { LoginFormValues } from "@/types/auth";
 import { LoginFormCard } from "./components/LoginFormCard";
 import { LoginHero } from "./components/LoginHero";
 import { useStyles } from "./style";
 
 const { Text } = Typography;
-
-interface LoginFormValues extends Store {
-  email: string;
-  password: string;
-}
 
 interface Metric {
   label: string;
@@ -26,21 +21,14 @@ const metrics: Metric[] = [
 
 export default function LoginRoute() {
   const { message } = App.useApp();
+  const { login } = useAuthActions();
+  const { errorMessage, isLoggingIn } = useAuthState();
   const { styles } = useStyles();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (values: LoginFormValues) => {
-    setIsSubmitting(true);
-
     try {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 650);
-      });
-
-      void message.success(`Welcome back, ${values.email}`);
-    } finally {
-      setIsSubmitting(false);
-    }
+      await login(values);
+    } catch {}
   };
 
   const handleAuxClick = (label: string) => {
@@ -58,7 +46,8 @@ export default function LoginRoute() {
           <Col xs={24} lg={11}>
             <div className={styles.formColumn}>
               <LoginFormCard
-                isSubmitting={isSubmitting}
+                errorMessage={errorMessage}
+                isSubmitting={isLoggingIn}
                 onSubmit={handleSubmit}
                 onForgotPassword={() => handleAuxClick("Forgot password")}
                 onRegister={() => handleAuxClick("Register")}

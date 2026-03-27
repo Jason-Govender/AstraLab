@@ -49,6 +49,7 @@
 - Use enums only when they add clarity.
 
 ## Functions and Methods
+- All functions must be declared with ES6 standards, NOT the "function" keyword
 - Use CamelCase names.
 - Keep functions short and focused.
 - Use guard clauses and early returns to reduce nesting.
