@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { App, Col, Row, Typography } from "antd";
 import { REGISTER_ROUTE } from "@/constants/auth";
@@ -22,7 +22,7 @@ const metrics: Metric[] = [
   { label: "ML Experiments", value: "342" },
 ];
 
-export default function LoginRoute() {
+function LoginRouteContent() {
   const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,5 +81,13 @@ export default function LoginRoute() {
         </Row>
       </section>
     </main>
+  );
+}
+
+export default function LoginRoute() {
+  return (
+    <Suspense fallback={null}>
+      <LoginRouteContent />
+    </Suspense>
   );
 }
