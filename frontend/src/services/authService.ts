@@ -15,8 +15,47 @@ const TOKEN_AUTH_ENDPOINT = "/api/TokenAuth/Authenticate";
 const REGISTER_ENDPOINT = "/api/services/app/Account/Register";
 const TENANT_AVAILABILITY_ENDPOINT = "/api/services/app/Account/IsTenantAvailable";
 
+interface AuthenticateResultResponse {
+  accessToken?: string;
+  encryptedAccessToken?: string;
+  expireInSeconds?: number;
+  userId?: number;
+  AccessToken?: string;
+  EncryptedAccessToken?: string;
+  ExpireInSeconds?: number;
+  UserId?: number;
+}
+
+function normalizeAuthenticateResult(
+  payload: AuthenticateResultResponse,
+): AuthenticateResult {
+  const accessToken = payload.accessToken ?? payload.AccessToken;
+  const encryptedAccessToken =
+    payload.encryptedAccessToken ?? payload.EncryptedAccessToken;
+  const expireInSeconds = Number(
+    payload.expireInSeconds ?? payload.ExpireInSeconds,
+  );
+  const userId = Number(payload.userId ?? payload.UserId);
+
+  if (
+    !accessToken ||
+    !encryptedAccessToken ||
+    !Number.isFinite(expireInSeconds) ||
+    !Number.isFinite(userId)
+  ) {
+    throw new Error("Unexpected authentication response from the API.");
+  }
+
+  return {
+    accessToken,
+    encryptedAccessToken,
+    expireInSeconds,
+    userId,
+  };
+}
+
 export async function authenticate(requestPayload: LoginRequest) {
-  const response = await axiosInstance.post<AuthenticateResult>(
+  const response = await axiosInstance.post<AuthenticateResultResponse>(
     TOKEN_AUTH_ENDPOINT,
     requestPayload,
     {
@@ -24,7 +63,7 @@ export async function authenticate(requestPayload: LoginRequest) {
     },
   );
 
-  return response.data;
+  return normalizeAuthenticateResult(response.data);
 }
 
 export async function registerAccount(requestPayload: RegisterRequest) {

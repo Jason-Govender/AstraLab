@@ -55,6 +55,10 @@ function buildAuthSession(
   payload: AuthenticateResult,
   tenancyName: string,
 ): AuthSession {
+  if (!Number.isFinite(payload.expireInSeconds)) {
+    throw new Error("Authentication response is missing expiry information.");
+  }
+
   const expiresAt = new Date(Date.now() + payload.expireInSeconds * 1000);
 
   return {
