@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Castle.Windsor.MsDependencyInjection</id>
+    <version>4.1.0</version>
+    <authors>Castle.Windsor.MsDependencyInjection</authors>
+    <licenseUrl>https://github.com/volosoft/castle-windsor-ms-adapter/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/volosoft/castle-windsor-ms-adapter</projectUrl>
+    <description>Package Description</description>
+    <tags>Windsor Castle AspNetCore DI IoC DNX DependencyInjection Extensions</tags>
+    <repository type="git" url="https://github.com/volosoft/castle-windsor-ms-adapter" commit="02743a2d3d828f9f1a7570732a2e29d79b389669" />
+    <dependencies>
+      <group targetFramework="net6.0">
+        <dependency id="Castle.Core" version="5.1.1" exclude="Build,Analyzers" />
+        <dependency id="Castle.Windsor" version="6.0.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.DependencyInjection" version="7.0.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Options" version="7.0.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

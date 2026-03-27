@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Abp.Zero.Common</id>
+    <version>9.4.1</version>
+    <authors>Abp.Zero.Common</authors>
+    <license type="file">LICENSE.md</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <icon>abp_nupkg.png</icon>
+    <projectUrl>http://www.aspnetboilerplate.com/</projectUrl>
+    <iconUrl>http://www.aspnetboilerplate.com/images/abp_nupkg.png</iconUrl>
+    <description>Abp.Zero.Common</description>
+    <tags>asp.net asp.net mvc boilerplate application framework web framework framework domain driven design multitenancy user management role management identity aspnet core</tags>
+    <repository type="git" url="https://github.com/aspnetboilerplate/aspnetboilerplate" commit="5df6b1b62fd06ba0e616733178ddb1cd24f9a634" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Abp" version="9.4.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

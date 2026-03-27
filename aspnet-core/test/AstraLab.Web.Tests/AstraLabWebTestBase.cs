@@ -14,7 +14,7 @@ using Abp.MultiTenancy;
 using Abp.Web.Models;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Models.TokenAuth;
-using AstraLab.Web.Startup;
+using AstraLab.Web.Host.Startup;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.AspNetCore.Hosting;
@@ -36,7 +36,7 @@ namespace AstraLab.Web.Tests
             return base
                 .CreateWebHostBuilder()
                 .UseContentRoot(ContentRootFolder.Value)
-                .UseSetting(WebHostDefaults.ApplicationKey, typeof(AstraLabWebMvcModule).Assembly.FullName);
+                .UseSetting(WebHostDefaults.ApplicationKey, typeof(AstraLabWebHostModule).Assembly.FullName);
         }
 
         #region Get response

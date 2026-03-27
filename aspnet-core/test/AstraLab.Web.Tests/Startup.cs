@@ -7,7 +7,7 @@ using AstraLab.Configuration;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Identity;
 using AstraLab.Web.Resources;
-using AstraLab.Web.Startup;
+using AstraLab.Web.Host.Startup;
 using Castle.MicroKernel.Registration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

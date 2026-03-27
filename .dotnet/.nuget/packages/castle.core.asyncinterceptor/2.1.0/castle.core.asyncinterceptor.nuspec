@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Castle.Core.AsyncInterceptor</id>
+    <version>2.1.0</version>
+    <authors>James Skimming</authors>
+    <license type="expression">Apache-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
+    <icon>castle-logo.png</icon>
+    <projectUrl>https://github.com/JSkimming/Castle.Core.AsyncInterceptor</projectUrl>
+    <description>AsyncInterceptor is an extension to Castle DynamicProxy to simplify the development of interceptors for asynchronous methods.</description>
+    <copyright>Copyright © 2016-2022 James Skimming</copyright>
+    <tags>async asynchronous-methods castle castle-core dynamic dynamicproxy dynamic-proxy dynamicproxy2 intercept-methods proxy</tags>
+    <repository type="git" url="https://github.com/JSkimming/Castle.Core.AsyncInterceptor" commit="54100653c3d1f9b56c94ba5bb63c19b635dd2908" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.5">
+        <dependency id="Castle.Core" version="4.4.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net5.0">
+        <dependency id="Castle.Core" version="4.4.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net6.0">
+        <dependency id="Castle.Core" version="4.4.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Castle.Core" version="4.4.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

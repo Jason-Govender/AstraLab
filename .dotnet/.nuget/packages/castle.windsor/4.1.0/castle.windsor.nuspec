@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Castle.Windsor</id>
+    <version>4.1.0</version>
+    <title>Castle Windsor</title>
+    <authors>Castle Project Contributors</authors>
+    <owners>Castle Project Contributors</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0.html</licenseUrl>
+    <projectUrl>http://www.castleproject.org/projects/windsor/</projectUrl>
+    <iconUrl>http://www.castleproject.org/img/windsor-logo.png</iconUrl>
+    <description>Castle Windsor is best of breed, mature Inversion of Control container available for .NET.</description>
+    <copyright>Copyright 2004-2017 Castle Project - http://www.castleproject.org/</copyright>
+    <tags>castle, windsor, inversionOfControl, DependencyInjection</tags>
+    <repository type="git" url="https://github.com/castleproject/Windsor" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.5">
+        <dependency id="Castle.Core" version="4.2.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard1.6">
+        <dependency id="NETStandard.Library" version="1.6.1" exclude="Build,Analyzers" />
+        <dependency id="Castle.Core" version="4.2.0" exclude="Build,Analyzers" />
+        <dependency id="System.Runtime.Serialization.Formatters" version="4.3.0" exclude="Build,Analyzers" />
+        <dependency id="System.Runtime.Loader" version="4.3.0" exclude="Build,Analyzers" />
+        <dependency id="System.Threading.Thread" version="4.3.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.DependencyModel" version="1.1.2" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.Runtime.Remoting" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Web" targetFramework=".NETFramework4.5" />
+    </frameworkAssemblies>
+  </metadata>
+</package>

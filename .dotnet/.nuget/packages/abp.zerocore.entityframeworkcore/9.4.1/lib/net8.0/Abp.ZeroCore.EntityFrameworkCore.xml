@@ -1,0 +1,338 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Abp.ZeroCore.EntityFrameworkCore</name>
+    </assembly>
+    <members>
+        <member name="M:Abp.Data.ConnectionStringHelper.GetConnectionString(System.String)">
+            <summary>
+            Gets connection string from given connection string or name.
+            </summary>
+        </member>
+        <member name="M:Abp.EntityHistory.EntityHistoryHelper.GetPropertyChanges(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry,System.Boolean)">
+            <summary>
+            Gets the property changes for this entry.
+            </summary>
+        </member>
+        <member name="M:Abp.EntityHistory.EntityHistoryHelper.UpdateChangeSet(Abp.EntityHistory.EntityChangeSet)">
+            <summary>
+            Updates change time, entity id, Adds foreign keys, Removes/Updates property changes after SaveChanges is called.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.Roles">
+            <summary>
+            Roles.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.Users">
+            <summary>
+            Users.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserLogins">
+            <summary>
+            User logins.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserLoginAttempts">
+            <summary>
+            User login attempts.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserRoles">
+            <summary>
+            User roles.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserClaims">
+            <summary>
+            User claims.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserTokens">
+            <summary>
+            User tokens.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.RoleClaims">
+            <summary>
+            Role claims.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.Permissions">
+            <summary>
+            Permissions.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.RolePermissions">
+            <summary>
+            Role permissions.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserPermissions">
+            <summary>
+            User permissions.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.Settings">
+            <summary>
+            Settings.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.AuditLogs">
+            <summary>
+            Audit logs.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.Languages">
+            <summary>
+            Languages.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.LanguageTexts">
+            <summary>
+            LanguageTexts.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.OrganizationUnits">
+            <summary>
+            OrganizationUnits.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserOrganizationUnits">
+            <summary>
+            UserOrganizationUnits.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.OrganizationUnitRoles">
+            <summary>
+            OrganizationUnitRoles.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.TenantNotifications">
+            <summary>
+            Tenant notifications.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.UserNotifications">
+            <summary>
+            User notifications.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.NotificationSubscriptions">
+            <summary>
+            Notification subscriptions.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.EntityChanges">
+            <summary>
+            Entity changes.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.EntityChangeSets">
+            <summary>
+            Entity change sets.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.EntityPropertyChanges">
+            <summary>
+            Entity property changes.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.WebhookEvents">
+            <summary>
+            Webhook information
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.WebhookSubscriptions">
+            <summary>
+            Web subscriptions
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.WebhookSendAttempts">
+            <summary>
+            Webhook work items
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.DynamicProperties">
+            <summary>
+            DynamicProperties
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.DynamicPropertyValues">
+            <summary>
+            DynamicProperty selectable values
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.DynamicEntityProperties">
+            <summary>
+            Entities dynamic properties. Which property that entity has
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.DynamicEntityPropertyValues">
+            <summary>
+            Entities dynamic properties values
+            </summary>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.#ctor(Microsoft.EntityFrameworkCore.DbContextOptions{`2})">
+            <summary>
+            
+            </summary>
+            <param name="options"></param>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.AbpZeroCommonDbContext`3.OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <summary>
+            
+            </summary>
+            <param name="modelBuilder"></param>
+        </member>
+        <member name="T:Abp.Zero.EntityFrameworkCore.AbpZeroCoreEntityFrameworkCoreModule">
+            <summary>
+            Entity framework integration module for ASP.NET Boilerplate Zero.
+            </summary>
+        </member>
+        <member name="T:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4">
+            <summary>
+            Base DbContext for ABP zero.
+            Derive your DbContext from this class to have base entities.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.Tenants">
+            <summary>
+            Tenants
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.Editions">
+            <summary>
+            Editions.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.FeatureSettings">
+            <summary>
+            FeatureSettings.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.TenantFeatureSettings">
+            <summary>
+            TenantFeatureSetting.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.EditionFeatureSettings">
+            <summary>
+            EditionFeatureSettings.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.BackgroundJobs">
+            <summary>
+            Background jobs.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.UserAccounts">
+            <summary>
+            User accounts
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.Notifications">
+            <summary>
+            Notifications.
+            </summary>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.#ctor(Microsoft.EntityFrameworkCore.DbContextOptions{`3})">
+            <summary>
+            
+            </summary>
+            <param name="options"></param>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.AbpZeroDbContext`4.OnModelCreating(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <summary>
+            
+            </summary>
+            <param name="modelBuilder"></param>
+        </member>
+        <member name="T:Abp.Zero.EntityFrameworkCore.AbpZeroDbModelBuilderExtensions">
+            <summary>
+            Extension methods for <see cref="T:Microsoft.EntityFrameworkCore.ModelBuilder"/>.
+            </summary>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.AbpZeroDbModelBuilderExtensions.ChangeAbpTablePrefix``3(Microsoft.EntityFrameworkCore.ModelBuilder,System.String,System.String)">
+            <summary>
+            Changes prefix for ABP tables (which is "Abp" by default).
+            Can be null/empty string to clear the prefix.
+            </summary>
+            <typeparam name="TTenant">The type of the tenant entity.</typeparam>
+            <typeparam name="TRole">The type of the role entity.</typeparam>
+            <typeparam name="TUser">The type of the user entity.</typeparam>
+            <param name="modelBuilder">Model builder.</param>
+            <param name="prefix">Table prefix, or null to clear prefix.</param>
+            <param name="schemaName">Schema name</param>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.Tenants">
+            <summary>
+            Tenants
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.Editions">
+            <summary>
+            Editions.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.FeatureSettings">
+            <summary>
+            FeatureSettings.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.TenantFeatureSettings">
+            <summary>
+            TenantFeatureSetting.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.EditionFeatureSettings">
+            <summary>
+            EditionFeatureSettings.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.BackgroundJobs">
+            <summary>
+            Background jobs.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.UserAccounts">
+            <summary>
+            User accounts
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.Notifications">
+            <summary>
+            Notifications.
+            </summary>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.AbpZeroHostDbContext`4.#ctor(Microsoft.EntityFrameworkCore.DbContextOptions{`3})">
+            <summary>
+            
+            </summary>
+            <param name="options"></param>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.AbpZeroTenantDbContext`3.#ctor(Microsoft.EntityFrameworkCore.DbContextOptions{`2})">
+             <summary>
+            
+             </summary>
+             <param name="options"></param>
+        </member>
+        <member name="T:Abp.Zero.EntityFrameworkCore.DbPerTenantConnectionStringResolver">
+            <summary>
+            Implements <see cref="T:Abp.MultiTenancy.IDbPerTenantConnectionStringResolver"/> to dynamically resolve
+            connection string for a multi tenant application.
+            </summary>
+        </member>
+        <member name="P:Abp.Zero.EntityFrameworkCore.DbPerTenantConnectionStringResolver.AbpSession">
+            <summary>
+            Reference to the session.
+            </summary>
+        </member>
+        <member name="M:Abp.Zero.EntityFrameworkCore.DbPerTenantConnectionStringResolver.#ctor(Abp.Configuration.Startup.IAbpStartupConfiguration,Abp.Domain.Uow.ICurrentUnitOfWorkProvider,Abp.MultiTenancy.ITenantCache)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Abp.Zero.EntityFrameworkCore.DbPerTenantConnectionStringResolver"/> class.
+            </summary>
+        </member>
+    </members>
+</doc>
