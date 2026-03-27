@@ -4,6 +4,17 @@ export interface LoginFormValues {
   tenancyName?: string;
 }
 
+export interface RegisterFormValues {
+  name: string;
+  surname: string;
+  userName: string;
+  emailAddress: string;
+  tenancyName: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+}
+
 export interface LoginRequest {
   userNameOrEmailAddress: string;
   password: string;
@@ -11,11 +22,39 @@ export interface LoginRequest {
   rememberClient: boolean;
 }
 
+export interface RegisterRequest {
+  name: string;
+  surname: string;
+  userName: string;
+  emailAddress: string;
+  tenancyName: string;
+  password: string;
+}
+
+export interface TenantAvailabilityRequest {
+  tenancyName: string;
+}
+
 export interface AuthenticateResult {
   accessToken: string;
   encryptedAccessToken: string;
   expireInSeconds: number;
   userId: number;
+}
+
+export interface RegisterResult {
+  canLogin: boolean;
+}
+
+export enum TenantAvailabilityState {
+  Available = 1,
+  InActive = 2,
+  NotFound = 3,
+}
+
+export interface TenantAvailabilityResult {
+  state: TenantAvailabilityState;
+  tenantId?: number | null;
 }
 
 export interface AuthSession {

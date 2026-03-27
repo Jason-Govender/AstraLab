@@ -1,10 +1,16 @@
 import { createContext } from "react";
-import type { AuthProfile, AuthSession, LoginFormValues } from "@/types/auth";
+import type {
+  AuthProfile,
+  AuthSession,
+  LoginFormValues,
+  RegisterFormValues,
+} from "@/types/auth";
 
 export interface IAuthStateContext {
   isInitialized: boolean;
   isInitializing: boolean;
   isLoggingIn: boolean;
+  isRegistering: boolean;
   isPending: boolean;
   isSuccess: boolean;
   isError: boolean;
@@ -17,6 +23,8 @@ export interface IAuthStateContext {
 export interface IAuthActionContext {
   initializeAuth: () => Promise<void>;
   login: (values: LoginFormValues) => Promise<void>;
+  register: (values: RegisterFormValues) => Promise<void>;
+  clearFeedback: () => void;
   logout: (options?: { redirectTo?: string }) => void;
 }
 
@@ -24,6 +32,7 @@ export const INITIAL_STATE: IAuthStateContext = {
   isInitialized: false,
   isInitializing: false,
   isLoggingIn: false,
+  isRegistering: false,
   isPending: false,
   isSuccess: false,
   isError: false,

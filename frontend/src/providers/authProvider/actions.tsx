@@ -7,9 +7,13 @@ export enum AuthActionEnums {
   initializeAuthPending = "INITIALIZE_AUTH_PENDING",
   initializeAuthSuccess = "INITIALIZE_AUTH_SUCCESS",
   initializeAuthError = "INITIALIZE_AUTH_ERROR",
+  clearFeedback = "CLEAR_FEEDBACK",
   loginPending = "LOGIN_PENDING",
   loginSuccess = "LOGIN_SUCCESS",
   loginError = "LOGIN_ERROR",
+  registerPending = "REGISTER_PENDING",
+  registerSuccess = "REGISTER_SUCCESS",
+  registerError = "REGISTER_ERROR",
   logout = "LOGOUT",
 }
 
@@ -38,6 +42,11 @@ interface LoginPendingAction {
   payload: AuthStatePatch;
 }
 
+interface ClearFeedbackAction {
+  type: AuthActionEnums.clearFeedback;
+  payload: AuthStatePatch;
+}
+
 interface LoginSuccessAction {
   type: AuthActionEnums.loginSuccess;
   payload: AuthStatePatch;
@@ -45,6 +54,21 @@ interface LoginSuccessAction {
 
 interface LoginErrorAction {
   type: AuthActionEnums.loginError;
+  payload: AuthStatePatch;
+}
+
+interface RegisterPendingAction {
+  type: AuthActionEnums.registerPending;
+  payload: AuthStatePatch;
+}
+
+interface RegisterSuccessAction {
+  type: AuthActionEnums.registerSuccess;
+  payload: AuthStatePatch;
+}
+
+interface RegisterErrorAction {
+  type: AuthActionEnums.registerError;
   payload: AuthStatePatch;
 }
 
@@ -57,9 +81,13 @@ export type AuthAction =
   | InitializeAuthPendingAction
   | InitializeAuthSuccessAction
   | InitializeAuthErrorAction
+  | ClearFeedbackAction
   | LoginPendingAction
   | LoginSuccessAction
   | LoginErrorAction
+  | RegisterPendingAction
+  | RegisterSuccessAction
+  | RegisterErrorAction
   | LogoutAction;
 
 export function initializeAuthPending(): InitializeAuthPendingAction {
@@ -83,6 +111,7 @@ export function initializeAuthSuccess({
     payload: {
       isInitialized: true,
       isInitializing: false,
+      isRegistering: false,
       isPending: false,
       isSuccess: Boolean(session),
       isError: false,
@@ -102,6 +131,7 @@ export function initializeAuthError(
     payload: {
       isInitialized: true,
       isInitializing: false,
+      isRegistering: false,
       isPending: false,
       isSuccess: false,
       isError: true,
@@ -113,12 +143,26 @@ export function initializeAuthError(
   };
 }
 
+export function clearFeedback(): ClearFeedbackAction {
+  return {
+    type: AuthActionEnums.clearFeedback,
+    payload: {
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      errorMessage: undefined,
+    },
+  };
+}
+
 export function loginPending(): LoginPendingAction {
   return {
     type: AuthActionEnums.loginPending,
     payload: {
       isLoggingIn: true,
+      isRegistering: false,
       isPending: true,
+      isSuccess: false,
       isError: false,
       errorMessage: undefined,
     },
@@ -134,6 +178,7 @@ export function loginSuccess({
     payload: {
       isInitialized: true,
       isLoggingIn: false,
+      isRegistering: false,
       isPending: false,
       isSuccess: true,
       isError: false,
@@ -151,6 +196,57 @@ export function loginError(errorMessage: string): LoginErrorAction {
     payload: {
       isInitialized: true,
       isLoggingIn: false,
+      isRegistering: false,
+      isPending: false,
+      isSuccess: false,
+      isError: true,
+      isAuthenticated: false,
+      errorMessage,
+      session: undefined,
+      profile: undefined,
+    },
+  };
+}
+
+export function registerPending(): RegisterPendingAction {
+  return {
+    type: AuthActionEnums.registerPending,
+    payload: {
+      isLoggingIn: false,
+      isRegistering: true,
+      isPending: true,
+      isSuccess: false,
+      isError: false,
+      errorMessage: undefined,
+    },
+  };
+}
+
+export function registerSuccess(): RegisterSuccessAction {
+  return {
+    type: AuthActionEnums.registerSuccess,
+    payload: {
+      isInitialized: true,
+      isLoggingIn: false,
+      isRegistering: false,
+      isPending: false,
+      isSuccess: true,
+      isError: false,
+      isAuthenticated: false,
+      errorMessage: undefined,
+      session: undefined,
+      profile: undefined,
+    },
+  };
+}
+
+export function registerError(errorMessage: string): RegisterErrorAction {
+  return {
+    type: AuthActionEnums.registerError,
+    payload: {
+      isInitialized: true,
+      isLoggingIn: false,
+      isRegistering: false,
       isPending: false,
       isSuccess: false,
       isError: true,
@@ -169,6 +265,7 @@ export function logoutSuccess(): LogoutAction {
       isInitialized: true,
       isInitializing: false,
       isLoggingIn: false,
+      isRegistering: false,
       isPending: false,
       isSuccess: false,
       isError: false,

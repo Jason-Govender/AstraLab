@@ -4,6 +4,7 @@ import {
   AUTH_SESSION_COOKIE_NAME,
   DASHBOARD_ROUTE,
   LOGIN_ROUTE,
+  REGISTER_ROUTE,
 } from "./constants/auth";
 import { parseAuthSession } from "./utils/authCookies";
 
@@ -21,7 +22,10 @@ export function proxy(request: NextRequest) {
   const hasSessionCookie = Boolean(authCookieValue);
   const { pathname } = request.nextUrl;
 
-  if (pathname === LOGIN_ROUTE && hasValidSession) {
+  if (
+    (pathname === LOGIN_ROUTE || pathname === REGISTER_ROUTE) &&
+    hasValidSession
+  ) {
     return NextResponse.redirect(new URL(DASHBOARD_ROUTE, request.url));
   }
 
@@ -31,7 +35,11 @@ export function proxy(request: NextRequest) {
     return hasSessionCookie ? clearInvalidAuthCookie(response) : response;
   }
 
-  if (pathname === LOGIN_ROUTE && hasSessionCookie && !hasValidSession) {
+  if (
+    (pathname === LOGIN_ROUTE || pathname === REGISTER_ROUTE) &&
+    hasSessionCookie &&
+    !hasValidSession
+  ) {
     return clearInvalidAuthCookie(NextResponse.next());
   }
 
@@ -39,5 +47,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/dashboard/:path*"],
+  matcher: ["/login", "/register", "/dashboard/:path*"],
 };
