@@ -37,7 +37,7 @@ export const useStyles = createStyles(({ token, css }) => ({
   `,
 
   hero: css`
-    max-width: 560px;
+    max-width: 540px;
   `,
 
   brand: css`
@@ -52,7 +52,7 @@ export const useStyles = createStyles(({ token, css }) => ({
   heroTitle: css`
     margin: 0 0 20px !important;
     color: ${token.colorText} !important;
-    font-size: clamp(40px, 5vw, 58px) !important;
+    font-size: clamp(38px, 5vw, 56px) !important;
     font-weight: 700 !important;
     line-height: 1.08 !important;
     letter-spacing: -0.05em !important;
@@ -68,80 +68,47 @@ export const useStyles = createStyles(({ token, css }) => ({
   `,
 
   heroDescription: css`
-    max-width: 520px;
-    margin-bottom: 40px !important;
+    max-width: 500px;
+    margin-bottom: 44px !important;
     color: ${token.colorTextSecondary} !important;
     font-size: 20px;
     line-height: 1.7 !important;
   `,
 
-  metrics: css`
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-    margin-bottom: 22px;
-
-    @media (max-width: 576px) {
-      grid-template-columns: 1fr;
-    }
-  `,
-
-  metricCard: css`
+  benefitCard: css`
     &.ant-card {
-      min-height: 126px;
-      border-radius: 20px;
-      border-color: rgba(40, 58, 92, 0.92);
-      background: rgba(16, 25, 43, 0.9);
-      box-shadow: none;
-    }
-
-    .ant-card-body {
-      display: flex;
-      height: 100%;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 22px 20px;
-    }
-  `,
-
-  metricLabel: css`
-    color: ${token.colorTextSecondary};
-    font-size: 15px;
-  `,
-
-  metricValue: css`
-    color: ${token.colorText};
-    font-size: 46px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.04em;
-  `,
-
-  summaryCard: css`
-    &.ant-card {
-      border-radius: 22px;
+      max-width: 430px;
+      border-radius: 24px;
       border-color: rgba(40, 58, 92, 0.92);
       background: rgba(16, 25, 43, 0.88);
       box-shadow: none;
     }
 
     .ant-card-body {
-      padding: 26px 24px;
+      padding: 22px 24px;
     }
   `,
 
-  summaryTitle: css`
-    margin-bottom: 10px !important;
+  benefitTitle: css`
+    margin-bottom: 16px !important;
     color: ${token.colorText} !important;
     font-size: 28px !important;
     line-height: 1.3 !important;
     letter-spacing: -0.03em !important;
   `,
 
-  summaryDescription: css`
-    margin: 0 !important;
-    color: ${token.colorTextSecondary} !important;
+  benefitList: css`
+    margin: 0;
+    padding-left: 18px;
+    color: ${token.colorTextSecondary};
+    display: grid;
+    gap: 12px;
+  `,
+
+  benefitItem: css`
+    color: ${token.colorTextSecondary};
     font-size: 16px;
+    line-height: 1.55;
   `,
 
   formColumn: css`
@@ -153,7 +120,7 @@ export const useStyles = createStyles(({ token, css }) => ({
 
   formCard: css`
     &.ant-card {
-      width: min(100%, 420px);
+      width: min(100%, 460px);
       border-radius: 28px;
       border-color: rgba(46, 67, 104, 0.84);
       background: rgba(16, 25, 43, 0.94);
@@ -199,14 +166,8 @@ export const useStyles = createStyles(({ token, css }) => ({
     background: rgba(79, 20, 20, 0.34) !important;
   `,
 
-  successAlert: css`
-    margin-bottom: 20px;
-    border-color: rgba(49, 214, 123, 0.28) !important;
-    background: rgba(13, 63, 37, 0.36) !important;
-  `,
-
   fieldRow: css`
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 
     .ant-form-item-label > label {
       color: ${token.colorText} !important;
@@ -235,25 +196,26 @@ export const useStyles = createStyles(({ token, css }) => ({
     }
   `,
 
-  actionsRow: css`
-    display: flex;
-    justify-content: flex-end;
-    margin: -4px 0 18px;
+  checkboxRow: css`
+    margin: 4px 0 20px;
+
+    .ant-form-item-explain-error {
+      margin-top: 8px;
+    }
   `,
 
-  linkButton: css`
-    &.ant-btn-link {
-      padding: 0;
-      height: auto;
-      color: ${token.colorPrimary};
-      font-size: 14px;
-      font-weight: 600;
-    }
+  checkbox: css`
+    align-items: flex-start;
 
-    &.ant-btn-link:hover,
-    &.ant-btn-link:focus {
-      color: #ff984d !important;
+    .ant-checkbox {
+      margin-top: 3px;
     }
+  `,
+
+  checkboxLabel: css`
+    color: ${token.colorTextSecondary};
+    font-size: 14px;
+    line-height: 1.5;
   `,
 
   submitButton: css`
@@ -264,27 +226,22 @@ export const useStyles = createStyles(({ token, css }) => ({
     }
   `,
 
-  divider: css`
-    margin: 18px 0 14px !important;
-    color: ${token.colorTextSecondary} !important;
-    font-size: 12px !important;
-  `,
-
-  registerRow: css`
+  signInRow: css`
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 4px;
+    margin-top: 16px;
     flex-wrap: wrap;
     text-align: center;
   `,
 
-  registerText: css`
+  signInText: css`
     color: ${token.colorTextSecondary};
     font-size: 14px;
   `,
 
-  registerButton: css`
+  signInButton: css`
     &.ant-btn-link {
       padding: 0;
       height: auto;

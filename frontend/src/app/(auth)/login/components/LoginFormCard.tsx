@@ -6,6 +6,7 @@ const { Paragraph, Text, Title } = Typography;
 
 interface LoginFormCardProps {
   errorMessage?: string;
+  successMessage?: string;
   isSubmitting: boolean;
   onSubmit: (values: LoginFormValues) => Promise<void>;
   onForgotPassword: () => void;
@@ -14,6 +15,7 @@ interface LoginFormCardProps {
 
 export function LoginFormCard({
   errorMessage,
+  successMessage,
   isSubmitting,
   onSubmit,
   onForgotPassword,
@@ -38,6 +40,15 @@ export function LoginFormCard({
         onFinish={onSubmit}
         className={styles.form}
       >
+        {successMessage ? (
+          <Alert
+            type="success"
+            message={successMessage}
+            showIcon
+            className={styles.successAlert}
+          />
+        ) : null}
+
         {errorMessage ? (
           <Alert
             type="error"

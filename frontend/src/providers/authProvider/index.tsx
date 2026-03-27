@@ -15,6 +15,9 @@ import type {
   AuthSession,
   LoginFormValues,
   LoginRequest,
+  RegisterFormValues,
+  RegisterRequest,
+  TenantAvailabilityState,
 } from "@/types/auth";
 import {
   clearAuthSession,
@@ -25,14 +28,20 @@ import { setUnauthorizedHandler } from "@/utils/axiosInstance";
 import {
   authenticate,
   getCurrentLoginInformations,
+  isTenantAvailable,
+  registerAccount,
 } from "@/services/authService";
 import {
+  clearFeedback as clearFeedbackAction,
   initializeAuthError,
   initializeAuthPending,
   initializeAuthSuccess,
   loginError,
   loginPending,
   loginSuccess,
+  registerError,
+  registerPending,
+  registerSuccess,
   logoutSuccess,
 } from "./actions";
 import { AuthReducer } from "./reducer";
@@ -79,7 +88,26 @@ function getErrorMessage(error: unknown) {
     }
   }
 
+  if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+
   return "Unable to complete authentication right now.";
+}
+
+function getTenantAvailabilityMessage(
+  state: TenantAvailabilityState,
+  tenancyName: string,
+) {
+  if (state === 2) {
+    return `Tenant "${tenancyName}" is not active.`;
+  }
+
+  if (state === 3) {
+    return `There is no tenant defined with the name "${tenancyName}".`;
+  }
+
+  return "Unable to validate that tenant right now.";
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -118,7 +146,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   };
 
-  const login = async (values: LoginFormValues) => {
+  const clearFeedback = () => {
+    dispatch(clearFeedbackAction());
+  };
+
+  const performLogin = async (
+    values: LoginFormValues,
+    options?: { redirectOnSuccess?: boolean },
+  ) => {
     dispatch(loginPending());
 
     const tenancyName =
@@ -144,10 +179,62 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }),
       );
 
-      router.replace(DASHBOARD_ROUTE);
+      if (options?.redirectOnSuccess ?? true) {
+        router.replace(DASHBOARD_ROUTE);
+      }
     } catch (error) {
       clearAuthSession();
       dispatch(loginError(getErrorMessage(error)));
+      throw error;
+    }
+  };
+
+  const login = async (values: LoginFormValues) => {
+    await performLogin(values);
+  };
+
+  const register = async (values: RegisterFormValues) => {
+    dispatch(registerPending());
+
+    const requestPayload: RegisterRequest = {
+      name: values.name.trim(),
+      surname: values.surname.trim(),
+      userName: values.userName.trim(),
+      emailAddress: values.emailAddress.trim(),
+      tenancyName: values.tenancyName.trim(),
+      password: values.password,
+    };
+
+    try {
+      const availability = await isTenantAvailable({
+        tenancyName: requestPayload.tenancyName,
+      });
+
+      if (availability.state !== 1) {
+        throw new Error(
+          getTenantAvailabilityMessage(
+            availability.state,
+            requestPayload.tenancyName,
+          ),
+        );
+      }
+
+      const result = await registerAccount(requestPayload);
+      dispatch(registerSuccess());
+
+      if (result.canLogin) {
+        await performLogin({
+          userNameOrEmailAddress: requestPayload.userName,
+          password: requestPayload.password,
+          tenancyName: requestPayload.tenancyName,
+        });
+        return;
+      }
+
+      router.replace(`${LOGIN_ROUTE}?registered=1`);
+    } catch (error) {
+      clearAuthSession();
+      dispatch(registerError(getErrorMessage(error)));
       throw error;
     }
   };
@@ -179,6 +266,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         value={{
           initializeAuth,
           login,
+          register,
+          clearFeedback,
           logout,
         }}
       >
