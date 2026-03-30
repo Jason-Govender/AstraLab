@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Abp.Dependency;
-using Abp.Domain.Entities;
 using Abp.Domain.Repositories;
 using Abp.Domain.Uow;
 using Abp.Extensions;
@@ -21,8 +20,8 @@ namespace AstraLab.Services.Datasets.Storage
     {
         private readonly IAbpSession _abpSession;
         private readonly IUnitOfWorkManager _unitOfWorkManager;
-        private readonly IRepository<DatasetVersion, long> _datasetVersionRepository;
         private readonly IRepository<DatasetFile, long> _datasetFileRepository;
+        private readonly IDatasetOwnershipAccessChecker _datasetOwnershipAccessChecker;
         private readonly IRawDatasetStorage _rawDatasetStorage;
 
         /// <summary>
@@ -31,14 +30,14 @@ namespace AstraLab.Services.Datasets.Storage
         public DatasetRawFileManager(
             IAbpSession abpSession,
             IUnitOfWorkManager unitOfWorkManager,
-            IRepository<DatasetVersion, long> datasetVersionRepository,
             IRepository<DatasetFile, long> datasetFileRepository,
+            IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker,
             IRawDatasetStorage rawDatasetStorage)
         {
             _abpSession = abpSession;
             _unitOfWorkManager = unitOfWorkManager;
-            _datasetVersionRepository = datasetVersionRepository;
             _datasetFileRepository = datasetFileRepository;
+            _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
             _rawDatasetStorage = rawDatasetStorage;
         }
 
@@ -52,35 +51,53 @@ namespace AstraLab.Services.Datasets.Storage
             using (var unitOfWork = _unitOfWorkManager.Begin())
             {
                 var tenantId = GetRequiredTenantId();
-                var datasetVersion = await GetDatasetVersionForTenantAsync(request.DatasetVersionId, tenantId);
+                var ownerUserId = _abpSession.GetUserId();
+                var datasetVersion = await _datasetOwnershipAccessChecker.GetDatasetVersionForOwnerAsync(request.DatasetVersionId, tenantId, ownerUserId);
+                StoredRawDatasetFileResult storedRawFile = null;
 
-                EnsureRequestMatchesDatasetVersion(request, datasetVersion);
-                EnsureDatasetVersionCanStoreRawFile(datasetVersion);
-
-                var storedRawFile = await _rawDatasetStorage.StoreAsync(new StoreRawDatasetFileRequest
+                try
                 {
-                    TenantId = tenantId,
-                    DatasetId = datasetVersion.DatasetId,
-                    DatasetVersionId = datasetVersion.Id,
-                    OriginalFileName = Path.GetFileName(request.OriginalFileName.Trim()),
-                    ContentType = request.ContentType?.Trim(),
-                    Content = request.Content
-                });
+                    EnsureRequestMatchesDatasetVersion(request, datasetVersion);
+                    EnsureDatasetVersionCanStoreRawFile(datasetVersion);
 
-                await _datasetFileRepository.InsertAsync(new DatasetFile
+                    storedRawFile = await _rawDatasetStorage.StoreAsync(new StoreRawDatasetFileRequest
+                    {
+                        TenantId = tenantId,
+                        DatasetId = datasetVersion.DatasetId,
+                        DatasetVersionId = datasetVersion.Id,
+                        OriginalFileName = Path.GetFileName(request.OriginalFileName.Trim()),
+                        ContentType = request.ContentType?.Trim(),
+                        Content = request.Content
+                    });
+
+                    await _datasetFileRepository.InsertAsync(new DatasetFile
+                    {
+                        TenantId = tenantId,
+                        DatasetVersionId = datasetVersion.Id,
+                        StorageProvider = storedRawFile.StorageProvider,
+                        StorageKey = storedRawFile.StorageKey,
+                        OriginalFileName = storedRawFile.OriginalFileName,
+                        ContentType = request.ContentType?.Trim(),
+                        SizeBytes = storedRawFile.SizeBytes,
+                        ChecksumSha256 = storedRawFile.ChecksumSha256
+                    });
+
+                    await unitOfWork.CompleteAsync();
+                    return storedRawFile;
+                }
+                catch (System.Exception exception) when (storedRawFile != null)
                 {
-                    TenantId = tenantId,
-                    DatasetVersionId = datasetVersion.Id,
-                    StorageProvider = storedRawFile.StorageProvider,
-                    StorageKey = storedRawFile.StorageKey,
-                    OriginalFileName = storedRawFile.OriginalFileName,
-                    ContentType = request.ContentType?.Trim(),
-                    SizeBytes = storedRawFile.SizeBytes,
-                    ChecksumSha256 = storedRawFile.ChecksumSha256
-                });
+                    try
+                    {
+                        await DeleteStoredRawFileAsync(storedRawFile);
+                    }
+                    catch (System.Exception cleanupException)
+                    {
+                        throw new System.AggregateException("Raw dataset storage failed and cleanup also failed.", exception, cleanupException);
+                    }
 
-                await unitOfWork.CompleteAsync();
-                return storedRawFile;
+                    throw;
+                }
             }
         }
 
@@ -92,21 +109,6 @@ namespace AstraLab.Services.Datasets.Storage
             }
 
             return _abpSession.TenantId.Value;
-        }
-
-        private async Task<DatasetVersion> GetDatasetVersionForTenantAsync(long datasetVersionId, int tenantId)
-        {
-            var datasetVersion = await _datasetVersionRepository.GetAll()
-                .Include(item => item.RawFile)
-                .Where(item => item.TenantId == tenantId && item.Id == datasetVersionId)
-                .FirstOrDefaultAsync();
-
-            if (datasetVersion == null)
-            {
-                throw new EntityNotFoundException(typeof(DatasetVersion), datasetVersionId);
-            }
-
-            return datasetVersion;
         }
 
         private static void ValidateRequest(StoreRawDatasetFileRequest request)
@@ -156,6 +158,18 @@ namespace AstraLab.Services.Datasets.Storage
             {
                 throw new UserFriendlyException("A raw dataset file already exists for the specified dataset version.");
             }
+        }
+
+        /// <summary>
+        /// Deletes a stored raw file using its logical storage reference.
+        /// </summary>
+        private Task DeleteStoredRawFileAsync(StoredRawDatasetFileResult storedRawFile)
+        {
+            return _rawDatasetStorage.DeleteAsync(new DeleteRawDatasetFileRequest
+            {
+                StorageProvider = storedRawFile.StorageProvider,
+                StorageKey = storedRawFile.StorageKey
+            });
         }
     }
 }

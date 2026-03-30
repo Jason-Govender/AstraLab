@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Abp.Dependency;
@@ -91,6 +92,24 @@ namespace AstraLab.Web.Core.Datasets.Storage
             }
         }
 
+        /// <summary>
+        /// Deletes a previously stored raw dataset file by logical reference.
+        /// </summary>
+        public Task DeleteAsync(DeleteRawDatasetFileRequest request)
+        {
+            ValidateDeleteRequest(request);
+
+            var filePath = ResolveStoragePath(request.StorageKey);
+            if (!File.Exists(filePath))
+            {
+                return Task.CompletedTask;
+            }
+
+            File.Delete(filePath);
+            DeleteEmptyParentDirectories(filePath);
+            return Task.CompletedTask;
+        }
+
         private static void ValidateRequest(StoreRawDatasetFileRequest request)
         {
             if (request == null)
@@ -140,6 +159,53 @@ namespace AstraLab.Web.Core.Datasets.Storage
         private static string BuildStorageKey(StoreRawDatasetFileRequest request, string finalFileName)
         {
             return $"tenants/{request.TenantId}/datasets/{request.DatasetId}/versions/{request.DatasetVersionId}/raw/{finalFileName}";
+        }
+
+        private void ValidateDeleteRequest(DeleteRawDatasetFileRequest request)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (!string.Equals(request.StorageProvider, ProviderName, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("The specified storage provider is not supported by the local filesystem storage.", nameof(request));
+            }
+
+            if (request.StorageKey.IsNullOrWhiteSpace())
+            {
+                throw new ArgumentException("The storage key is required.", nameof(request));
+            }
+        }
+
+        private string ResolveStoragePath(string storageKey)
+        {
+            var normalizedStorageKey = storageKey.Replace('/', Path.DirectorySeparatorChar);
+            var fullRootPath = Path.GetFullPath(_rawRootPath);
+            var fullPath = Path.GetFullPath(Path.Combine(fullRootPath, normalizedStorageKey));
+
+            if (!fullPath.StartsWith(fullRootPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The storage key resolves outside the configured raw dataset storage root.");
+            }
+
+            return fullPath;
+        }
+
+        private void DeleteEmptyParentDirectories(string filePath)
+        {
+            var fullRootPath = Path.GetFullPath(_rawRootPath).TrimEnd(Path.DirectorySeparatorChar);
+            var directory = new DirectoryInfo(Path.GetDirectoryName(filePath));
+
+            while (directory != null &&
+                   !string.Equals(directory.FullName.TrimEnd(Path.DirectorySeparatorChar), fullRootPath, StringComparison.OrdinalIgnoreCase) &&
+                   !directory.EnumerateFileSystemInfos().Any())
+            {
+                var parentDirectory = directory.Parent;
+                directory.Delete();
+                directory = parentDirectory;
+            }
         }
     }
 }

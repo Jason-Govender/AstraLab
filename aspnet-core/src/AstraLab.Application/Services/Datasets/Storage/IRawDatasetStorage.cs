@@ -11,5 +11,10 @@ namespace AstraLab.Services.Datasets.Storage
         /// Stores a raw dataset file in immutable form.
         /// </summary>
         Task<StoredRawDatasetFileResult> StoreAsync(StoreRawDatasetFileRequest request);
+
+        /// <summary>
+        /// Deletes a previously stored raw dataset file by logical reference.
+        /// </summary>
+        Task DeleteAsync(DeleteRawDatasetFileRequest request);
     }
 }

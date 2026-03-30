@@ -1,10 +1,19 @@
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Abp.Domain.Repositories;
+using Abp.Domain.Uow;
+using Abp.ObjectMapping;
+using Abp.Runtime.Session;
 using Abp.UI;
+using NSubstitute;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Services.Datasets;
 using AstraLab.Services.Datasets.Dto;
+using AstraLab.Services.Datasets.Ingestion;
+using AstraLab.Services.Datasets.Storage;
+using AstraLab.Web.Core.Datasets.Storage;
 using Shouldly;
 using Xunit;
 
@@ -260,6 +269,80 @@ namespace AstraLab.Tests.Services.Datasets
 
                 await Task.CompletedTask;
             });
+        }
+
+        [Fact]
+        public async Task UploadRawAsync_Should_Delete_Stored_File_When_Post_Storage_Persistence_Fails()
+        {
+            var datasetColumnRepository = Substitute.For<IRepository<DatasetColumn, long>>();
+            datasetColumnRepository.InsertAsync(Arg.Any<DatasetColumn>())
+                .Returns<Task<DatasetColumn>>(_ => throw new IOException("Simulated dataset column persistence failure."));
+
+            var datasetIngestionAppService = CreateDatasetIngestionAppService(
+                new SuccessfulMetadataExtractor(),
+                datasetColumnRepository);
+            var datasetStorageOptions = Resolve<DatasetStorageOptions>();
+
+            using (var unitOfWork = Resolve<IUnitOfWorkManager>().Begin())
+            {
+                var exception = await Should.ThrowAsync<System.Exception>(() =>
+                    datasetIngestionAppService.UploadRawAsync(new UploadRawDatasetRequest
+                    {
+                        Name = "Duplicate Ordinal CSV",
+                        OriginalFileName = "duplicate.csv",
+                        ContentType = "text/csv",
+                        Content = Encoding.UTF8.GetBytes("id,name\n1,Alice\n")
+                    }));
+
+                exception.ShouldNotBeNull();
+            }
+
+            if (Directory.Exists(datasetStorageOptions.RawRootPath))
+            {
+                Directory.GetFiles(datasetStorageOptions.RawRootPath, "*", SearchOption.AllDirectories).ShouldBeEmpty();
+            }
+        }
+
+        private class SuccessfulMetadataExtractor : IRawDatasetMetadataExtractor
+        {
+            public ExtractedRawDatasetMetadata Extract(byte[] content, DatasetFormat datasetFormat)
+            {
+                return new ExtractedRawDatasetMetadata
+                {
+                    ColumnCount = 1,
+                    SchemaJson = "{\"columns\":1}",
+                    Columns = new[]
+                    {
+                        new ExtractedDatasetColumn
+                        {
+                            Name = "first",
+                            DataType = "string",
+                            IsDataTypeInferred = true,
+                            Ordinal = 1
+                        }
+                    }
+                };
+            }
+        }
+
+        private DatasetIngestionAppService CreateDatasetIngestionAppService(
+            IRawDatasetMetadataExtractor rawDatasetMetadataExtractor,
+            IRepository<DatasetColumn, long> datasetColumnRepository)
+        {
+            return new DatasetIngestionAppService(
+                Resolve<IRepository<Dataset, long>>(),
+                Resolve<IRepository<DatasetVersion, long>>(),
+                datasetColumnRepository,
+                Resolve<IRepository<DatasetFile, long>>(),
+                Resolve<IRawDatasetUploadValidator>(),
+                rawDatasetMetadataExtractor,
+                Resolve<IDatasetRawFileManager>(),
+                Resolve<IRawDatasetStorage>())
+            {
+                AbpSession = Resolve<IAbpSession>(),
+                ObjectMapper = Resolve<IObjectMapper>(),
+                UnitOfWorkManager = Resolve<IUnitOfWorkManager>()
+            };
         }
     }
 }

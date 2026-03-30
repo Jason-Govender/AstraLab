@@ -22,18 +22,18 @@ namespace AstraLab.Services.Datasets
     [AbpAuthorize(PermissionNames.Pages_Datasets)]
     public class DatasetColumnAppService : AstraLabAppServiceBase, IDatasetColumnAppService
     {
-        private readonly IRepository<DatasetVersion, long> _datasetVersionRepository;
         private readonly IRepository<DatasetColumn, long> _datasetColumnRepository;
+        private readonly IDatasetOwnershipAccessChecker _datasetOwnershipAccessChecker;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatasetColumnAppService"/> class.
         /// </summary>
         public DatasetColumnAppService(
-            IRepository<DatasetVersion, long> datasetVersionRepository,
-            IRepository<DatasetColumn, long> datasetColumnRepository)
+            IRepository<DatasetColumn, long> datasetColumnRepository,
+            IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker)
         {
-            _datasetVersionRepository = datasetVersionRepository;
             _datasetColumnRepository = datasetColumnRepository;
+            _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
         }
 
         /// <summary>
@@ -42,7 +42,8 @@ namespace AstraLab.Services.Datasets
         public async Task<ListResultDto<DatasetColumnDto>> ReplaceForVersionAsync(ReplaceDatasetColumnsDto input)
         {
             var tenantId = GetRequiredTenantId();
-            var datasetVersion = await GetDatasetVersionForTenantAsync(input.DatasetVersionId, tenantId);
+            var ownerUserId = AbpSession.GetUserId();
+            var datasetVersion = await _datasetOwnershipAccessChecker.GetDatasetVersionForOwnerAsync(input.DatasetVersionId, tenantId, ownerUserId);
             var submittedColumns = input.Columns ?? new List<ReplaceDatasetColumnItemDto>();
 
             ValidateReplaceRequest(submittedColumns);
@@ -83,15 +84,8 @@ namespace AstraLab.Services.Datasets
         public async Task<DatasetColumnDto> GetAsync(EntityDto<long> input)
         {
             var tenantId = GetRequiredTenantId();
-
-            var datasetColumn = await _datasetColumnRepository.GetAll()
-                .Where(item => item.TenantId == tenantId && item.DatasetVersion.TenantId == tenantId && item.Id == input.Id)
-                .FirstOrDefaultAsync();
-
-            if (datasetColumn == null)
-            {
-                throw new EntityNotFoundException(typeof(DatasetColumn), input.Id);
-            }
+            var ownerUserId = AbpSession.GetUserId();
+            var datasetColumn = await _datasetOwnershipAccessChecker.GetDatasetColumnForOwnerAsync(input.Id, tenantId, ownerUserId);
 
             return ObjectMapper.Map<DatasetColumnDto>(datasetColumn);
         }
@@ -102,13 +96,15 @@ namespace AstraLab.Services.Datasets
         public async Task<PagedResultDto<DatasetColumnDto>> GetAllAsync(PagedDatasetColumnResultRequestDto input)
         {
             var tenantId = GetRequiredTenantId();
-            await GetDatasetVersionForTenantAsync(input.DatasetVersionId, tenantId);
+            var ownerUserId = AbpSession.GetUserId();
+            await _datasetOwnershipAccessChecker.GetDatasetVersionForOwnerAsync(input.DatasetVersionId, tenantId, ownerUserId);
 
             var query = _datasetColumnRepository.GetAll()
                 .Where(item =>
                     item.TenantId == tenantId &&
                     item.DatasetVersionId == input.DatasetVersionId &&
-                    item.DatasetVersion.TenantId == tenantId);
+                    item.DatasetVersion.TenantId == tenantId &&
+                    item.DatasetVersion.Dataset.OwnerUserId == ownerUserId);
 
             var totalCount = await query.CountAsync();
 
@@ -130,20 +126,6 @@ namespace AstraLab.Services.Datasets
             }
 
             return AbpSession.TenantId.Value;
-        }
-
-        private async Task<DatasetVersion> GetDatasetVersionForTenantAsync(long datasetVersionId, int tenantId)
-        {
-            var datasetVersion = await _datasetVersionRepository.GetAll()
-                .Where(item => item.TenantId == tenantId && item.Id == datasetVersionId)
-                .FirstOrDefaultAsync();
-
-            if (datasetVersion == null)
-            {
-                throw new EntityNotFoundException(typeof(DatasetVersion), datasetVersionId);
-            }
-
-            return datasetVersion;
         }
 
         private static void ValidateReplaceRequest(IReadOnlyCollection<ReplaceDatasetColumnItemDto> columns)

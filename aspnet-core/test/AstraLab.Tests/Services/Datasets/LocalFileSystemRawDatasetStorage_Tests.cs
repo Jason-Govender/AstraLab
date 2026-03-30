@@ -103,5 +103,57 @@ namespace AstraLab.Tests.Services.Datasets
                 }
             }
         }
+
+        [Fact]
+        public async Task DeleteAsync_Should_Remove_A_Previously_Stored_File_And_Tolerate_Missing_Targets()
+        {
+            var rawRootPath = Path.Combine(Path.GetTempPath(), "AstraLab.Tests", "LocalStorage", Path.GetRandomFileName());
+            Directory.CreateDirectory(rawRootPath);
+
+            try
+            {
+                var storage = new LocalFileSystemRawDatasetStorage(new DatasetStorageOptions
+                {
+                    RawRootPath = rawRootPath
+                });
+
+                StoredRawDatasetFileResult storedFile;
+                using (var content = new MemoryStream(Encoding.UTF8.GetBytes("id,name\n1,Alice\n")))
+                {
+                    storedFile = await storage.StoreAsync(new StoreRawDatasetFileRequest
+                    {
+                        TenantId = 4,
+                        DatasetId = 8,
+                        DatasetVersionId = 15,
+                        OriginalFileName = "customers.csv",
+                        Content = content
+                    });
+                }
+
+                var persistedFilePath = Path.Combine(rawRootPath, storedFile.StorageKey.Replace('/', Path.DirectorySeparatorChar));
+                File.Exists(persistedFilePath).ShouldBeTrue();
+
+                await storage.DeleteAsync(new DeleteRawDatasetFileRequest
+                {
+                    StorageProvider = storedFile.StorageProvider,
+                    StorageKey = storedFile.StorageKey
+                });
+
+                File.Exists(persistedFilePath).ShouldBeFalse();
+
+                await storage.DeleteAsync(new DeleteRawDatasetFileRequest
+                {
+                    StorageProvider = storedFile.StorageProvider,
+                    StorageKey = storedFile.StorageKey
+                });
+            }
+            finally
+            {
+                if (Directory.Exists(rawRootPath))
+                {
+                    Directory.Delete(rawRootPath, true);
+                }
+            }
+        }
     }
 }

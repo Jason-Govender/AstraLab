@@ -84,6 +84,30 @@ namespace AstraLab.Tests.Services.Datasets
         }
 
         [Fact]
+        public async Task GetAsync_Should_Hide_Dataset_From_Other_Owner_In_Same_Tenant()
+        {
+            var datasetId = UsingDbContext(context =>
+            {
+                var dataset = context.Datasets.Add(new Dataset
+                {
+                    TenantId = 1,
+                    Name = "other-owner-dataset",
+                    Description = "Other owner dataset",
+                    SourceFormat = DatasetFormat.Csv,
+                    Status = DatasetStatus.Uploaded,
+                    OwnerUserId = AbpSession.GetUserId() + 99,
+                    OriginalFileName = "other-owner.csv"
+                }).Entity;
+
+                context.SaveChanges();
+                return dataset.Id;
+            });
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetAppService.GetAsync(new EntityDto<long>(datasetId)));
+        }
+
+        [Fact]
         public async Task GetDetailsAsync_Should_Return_Dataset_Versions_Selected_Version_Columns_And_File_Metadata()
         {
             var currentUserId = AbpSession.GetUserId();

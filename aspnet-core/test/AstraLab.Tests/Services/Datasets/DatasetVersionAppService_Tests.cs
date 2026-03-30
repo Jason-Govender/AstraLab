@@ -158,6 +158,34 @@ namespace AstraLab.Tests.Services.Datasets
         }
 
         [Fact]
+        public async Task CreateAsync_Should_Reject_Dataset_From_Other_Owner_In_Same_Tenant()
+        {
+            var otherOwnerDatasetId = UsingDbContext(context =>
+            {
+                var dataset = context.Datasets.Add(new Dataset
+                {
+                    TenantId = 1,
+                    Name = "other-owner-version-dataset",
+                    SourceFormat = DatasetFormat.Csv,
+                    Status = DatasetStatus.Uploaded,
+                    OwnerUserId = AbpSession.GetUserId() + 200,
+                    OriginalFileName = "other-owner.csv"
+                }).Entity;
+
+                context.SaveChanges();
+                return dataset.Id;
+            });
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetVersionAppService.CreateAsync(new CreateDatasetVersionDto
+                {
+                    DatasetId = otherOwnerDatasetId,
+                    VersionType = DatasetVersionType.Raw,
+                    SizeBytes = 200
+                }));
+        }
+
+        [Fact]
         public async Task GetAsync_Should_Return_Dataset_Version_For_Current_Tenant()
         {
             var datasetId = await CreateDatasetAsync();
@@ -216,6 +244,41 @@ namespace AstraLab.Tests.Services.Datasets
 
             await Should.ThrowAsync<EntityNotFoundException>(() =>
                 _datasetVersionAppService.GetAsync(new EntityDto<long>(otherTenantVersionId)));
+        }
+
+        [Fact]
+        public async Task GetAsync_Should_Hide_Dataset_Version_From_Other_Owner_In_Same_Tenant()
+        {
+            var otherOwnerVersionId = UsingDbContext(1, context =>
+            {
+                var dataset = context.Datasets.Add(new Dataset
+                {
+                    TenantId = 1,
+                    Name = "other-owner-version-dataset",
+                    SourceFormat = DatasetFormat.Csv,
+                    Status = DatasetStatus.Uploaded,
+                    OwnerUserId = AbpSession.GetUserId() + 300,
+                    OriginalFileName = "other-owner.csv"
+                }).Entity;
+
+                context.SaveChanges();
+
+                var version = context.DatasetVersions.Add(new DatasetVersion
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    VersionNumber = 1,
+                    VersionType = DatasetVersionType.Raw,
+                    Status = DatasetVersionStatus.Active,
+                    SizeBytes = 123
+                }).Entity;
+
+                context.SaveChanges();
+                return version.Id;
+            });
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetVersionAppService.GetAsync(new EntityDto<long>(otherOwnerVersionId)));
         }
 
         [Fact]
@@ -282,6 +345,46 @@ namespace AstraLab.Tests.Services.Datasets
 
             filteredOutput.TotalCount.ShouldBe(1);
             filteredOutput.Items.Single().VersionNumber.ShouldBe(2);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Should_Hide_Dataset_Versions_From_Other_Owner_In_Same_Tenant()
+        {
+            var otherOwnerDatasetId = UsingDbContext(1, context =>
+            {
+                var dataset = context.Datasets.Add(new Dataset
+                {
+                    TenantId = 1,
+                    Name = "other-owner-version-list-dataset",
+                    SourceFormat = DatasetFormat.Json,
+                    Status = DatasetStatus.Uploaded,
+                    OwnerUserId = AbpSession.GetUserId() + 400,
+                    OriginalFileName = "other-owner.json"
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.DatasetVersions.Add(new DatasetVersion
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    VersionNumber = 1,
+                    VersionType = DatasetVersionType.Raw,
+                    Status = DatasetVersionStatus.Active,
+                    SizeBytes = 321
+                });
+
+                context.SaveChanges();
+                return dataset.Id;
+            });
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetVersionAppService.GetAllAsync(new PagedDatasetVersionResultRequestDto
+                {
+                    DatasetId = otherOwnerDatasetId,
+                    MaxResultCount = 20,
+                    SkipCount = 0
+                }));
         }
 
         [Fact]

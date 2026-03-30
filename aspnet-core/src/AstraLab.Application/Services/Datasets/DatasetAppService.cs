@@ -25,6 +25,7 @@ namespace AstraLab.Services.Datasets
         private readonly IRepository<DatasetVersion, long> _datasetVersionRepository;
         private readonly IRepository<DatasetColumn, long> _datasetColumnRepository;
         private readonly IRepository<DatasetFile, long> _datasetFileRepository;
+        private readonly IDatasetOwnershipAccessChecker _datasetOwnershipAccessChecker;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatasetAppService"/> class.
@@ -33,12 +34,14 @@ namespace AstraLab.Services.Datasets
             IRepository<Dataset, long> datasetRepository,
             IRepository<DatasetVersion, long> datasetVersionRepository,
             IRepository<DatasetColumn, long> datasetColumnRepository,
-            IRepository<DatasetFile, long> datasetFileRepository)
+            IRepository<DatasetFile, long> datasetFileRepository,
+            IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker)
         {
             _datasetRepository = datasetRepository;
             _datasetVersionRepository = datasetVersionRepository;
             _datasetColumnRepository = datasetColumnRepository;
             _datasetFileRepository = datasetFileRepository;
+            _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
         }
 
         /// <summary>
@@ -66,15 +69,8 @@ namespace AstraLab.Services.Datasets
         public async Task<DatasetDto> GetAsync(EntityDto<long> input)
         {
             var tenantId = GetRequiredTenantId();
-
-            var dataset = await _datasetRepository.GetAll()
-                .Where(item => item.TenantId == tenantId && item.Id == input.Id)
-                .FirstOrDefaultAsync();
-
-            if (dataset == null)
-            {
-                throw new EntityNotFoundException(typeof(Dataset), input.Id);
-            }
+            var ownerUserId = AbpSession.GetUserId();
+            var dataset = await _datasetOwnershipAccessChecker.GetDatasetForOwnerAsync(input.Id, tenantId, ownerUserId);
 
             return ObjectMapper.Map<DatasetDto>(dataset);
         }
@@ -86,11 +82,13 @@ namespace AstraLab.Services.Datasets
         {
             var tenantId = GetRequiredTenantId();
             var ownerUserId = AbpSession.GetUserId();
-
-            var dataset = await GetDatasetForOwnerAsync(input.DatasetId, tenantId, ownerUserId);
+            var dataset = await _datasetOwnershipAccessChecker.GetDatasetForOwnerAsync(input.DatasetId, tenantId, ownerUserId);
 
             var versions = await _datasetVersionRepository.GetAll()
-                .Where(item => item.TenantId == tenantId && item.DatasetId == dataset.Id)
+                .Where(item =>
+                    item.TenantId == tenantId &&
+                    item.DatasetId == dataset.Id &&
+                    item.Dataset.OwnerUserId == ownerUserId)
                 .OrderByDescending(item => item.VersionNumber)
                 .ToListAsync();
 
@@ -109,7 +107,10 @@ namespace AstraLab.Services.Datasets
             var columns = selectedVersion == null
                 ? new System.Collections.Generic.List<DatasetColumn>()
                 : await _datasetColumnRepository.GetAll()
-                    .Where(item => item.TenantId == tenantId && item.DatasetVersionId == selectedVersion.Id)
+                    .Where(item =>
+                        item.TenantId == tenantId &&
+                        item.DatasetVersionId == selectedVersion.Id &&
+                        item.DatasetVersion.Dataset.OwnerUserId == ownerUserId)
                     .OrderBy(item => item.Ordinal)
                     .ToListAsync();
 
@@ -117,7 +118,10 @@ namespace AstraLab.Services.Datasets
             if (selectedVersion != null)
             {
                 rawFile = await _datasetFileRepository.GetAll()
-                    .Where(item => item.TenantId == tenantId && item.DatasetVersionId == selectedVersion.Id)
+                    .Where(item =>
+                        item.TenantId == tenantId &&
+                        item.DatasetVersionId == selectedVersion.Id &&
+                        item.DatasetVersion.Dataset.OwnerUserId == ownerUserId)
                     .FirstOrDefaultAsync();
             }
 
@@ -184,23 +188,6 @@ namespace AstraLab.Services.Datasets
             }
 
             return AbpSession.TenantId.Value;
-        }
-
-        /// <summary>
-        /// Gets a dataset for the current tenant owner.
-        /// </summary>
-        private async Task<Dataset> GetDatasetForOwnerAsync(long datasetId, int tenantId, long ownerUserId)
-        {
-            var dataset = await _datasetRepository.GetAll()
-                .Where(item => item.TenantId == tenantId && item.OwnerUserId == ownerUserId && item.Id == datasetId)
-                .FirstOrDefaultAsync();
-
-            if (dataset == null)
-            {
-                throw new EntityNotFoundException(typeof(Dataset), datasetId);
-            }
-
-            return dataset;
         }
 
         /// <summary>

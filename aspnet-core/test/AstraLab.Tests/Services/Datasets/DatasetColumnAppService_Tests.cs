@@ -236,6 +236,45 @@ namespace AstraLab.Tests.Services.Datasets
         }
 
         [Fact]
+        public async Task ReplaceForVersionAsync_Should_Reject_Dataset_Version_From_Other_Owner_In_Same_Tenant()
+        {
+            var otherOwnerDatasetVersionId = UsingDbContext(1, context =>
+            {
+                var dataset = context.Datasets.Add(new Dataset
+                {
+                    TenantId = 1,
+                    Name = "other-owner-columns-dataset",
+                    SourceFormat = DatasetFormat.Csv,
+                    Status = DatasetStatus.Uploaded,
+                    OwnerUserId = AbpSession.GetUserId() + 100,
+                    OriginalFileName = "other-owner.csv"
+                }).Entity;
+
+                context.SaveChanges();
+
+                var datasetVersion = context.DatasetVersions.Add(new DatasetVersion
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    VersionNumber = 1,
+                    VersionType = DatasetVersionType.Raw,
+                    Status = DatasetVersionStatus.Active,
+                    SizeBytes = 200
+                }).Entity;
+
+                context.SaveChanges();
+                return datasetVersion.Id;
+            });
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetColumnAppService.ReplaceForVersionAsync(new ReplaceDatasetColumnsDto
+                {
+                    DatasetVersionId = otherOwnerDatasetVersionId,
+                    Columns = new List<ReplaceDatasetColumnItemDto>()
+                }));
+        }
+
+        [Fact]
         public async Task GetAsync_Should_Hide_Column_From_Other_Tenant()
         {
             var otherTenantId = UsingDbContext((int?)null, context =>
@@ -290,6 +329,53 @@ namespace AstraLab.Tests.Services.Datasets
         }
 
         [Fact]
+        public async Task GetAsync_Should_Hide_Column_From_Other_Owner_In_Same_Tenant()
+        {
+            var otherOwnerColumnId = UsingDbContext(1, context =>
+            {
+                var dataset = context.Datasets.Add(new Dataset
+                {
+                    TenantId = 1,
+                    Name = "other-owner-column-dataset",
+                    SourceFormat = DatasetFormat.Csv,
+                    Status = DatasetStatus.Uploaded,
+                    OwnerUserId = AbpSession.GetUserId() + 200,
+                    OriginalFileName = "other-owner.csv"
+                }).Entity;
+
+                context.SaveChanges();
+
+                var datasetVersion = context.DatasetVersions.Add(new DatasetVersion
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    VersionNumber = 1,
+                    VersionType = DatasetVersionType.Raw,
+                    Status = DatasetVersionStatus.Active,
+                    SizeBytes = 500
+                }).Entity;
+
+                context.SaveChanges();
+
+                var datasetColumn = context.DatasetColumns.Add(new DatasetColumn
+                {
+                    TenantId = 1,
+                    DatasetVersionId = datasetVersion.Id,
+                    Name = "other_owner_column",
+                    DataType = "string",
+                    IsDataTypeInferred = true,
+                    Ordinal = 1
+                }).Entity;
+
+                context.SaveChanges();
+                return datasetColumn.Id;
+            });
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetColumnAppService.GetAsync(new EntityDto<long>(otherOwnerColumnId)));
+        }
+
+        [Fact]
         public async Task GetAllAsync_Should_Return_Only_Columns_For_Requested_Dataset_Version_In_Ordinal_Order()
         {
             var datasetVersionId = await CreateDatasetVersionAsync();
@@ -333,6 +419,58 @@ namespace AstraLab.Tests.Services.Datasets
             output.Items[0].Name.ShouldBe("first_column");
             output.Items[1].Ordinal.ShouldBe(2);
             output.Items[1].Name.ShouldBe("second_column");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Should_Hide_Columns_From_Other_Owner_In_Same_Tenant()
+        {
+            var otherOwnerDatasetVersionId = UsingDbContext(1, context =>
+            {
+                var dataset = context.Datasets.Add(new Dataset
+                {
+                    TenantId = 1,
+                    Name = "other-owner-column-list-dataset",
+                    SourceFormat = DatasetFormat.Json,
+                    Status = DatasetStatus.Uploaded,
+                    OwnerUserId = AbpSession.GetUserId() + 300,
+                    OriginalFileName = "other-owner.json"
+                }).Entity;
+
+                context.SaveChanges();
+
+                var datasetVersion = context.DatasetVersions.Add(new DatasetVersion
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    VersionNumber = 1,
+                    VersionType = DatasetVersionType.Raw,
+                    Status = DatasetVersionStatus.Active,
+                    SizeBytes = 300
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.DatasetColumns.Add(new DatasetColumn
+                {
+                    TenantId = 1,
+                    DatasetVersionId = datasetVersion.Id,
+                    Name = "hidden_column",
+                    DataType = "string",
+                    IsDataTypeInferred = true,
+                    Ordinal = 1
+                });
+
+                context.SaveChanges();
+                return datasetVersion.Id;
+            });
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetColumnAppService.GetAllAsync(new PagedDatasetColumnResultRequestDto
+                {
+                    DatasetVersionId = otherOwnerDatasetVersionId,
+                    MaxResultCount = 20,
+                    SkipCount = 0
+                }));
         }
 
         [Fact]
