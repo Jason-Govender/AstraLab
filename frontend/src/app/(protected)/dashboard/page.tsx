@@ -1,92 +1,172 @@
 "use client";
 
-import { Button, Card, Col, Row, Spin, Typography } from "antd";
-import { useAuthActions, useAuthState } from "@/providers/authProvider";
+import { Button, Card, Col, Row, Table, Tag, Typography } from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import { useStyles } from "./style";
 
 const { Paragraph, Text, Title } = Typography;
 
+interface DashboardMetric {
+  label: string;
+  value: string;
+}
+
+interface RecentDatasetRow {
+  key: string;
+  dataset: string;
+  updated: string;
+  status: string;
+  statusColor: string;
+  health: string;
+  healthTone: "good" | "warning" | "error";
+  lastAnalysis: string;
+}
+
+const DASHBOARD_METRICS: DashboardMetric[] = [
+  {
+    label: "Total Datasets",
+    value: "18",
+  },
+  {
+    label: "Processed Versions",
+    value: "42",
+  },
+  {
+    label: "ML Experiments",
+    value: "11",
+  },
+  {
+    label: "Reports Generated",
+    value: "9",
+  },
+];
+
+const RECENT_DATASETS: RecentDatasetRow[] = [
+  {
+    key: "customer-churn",
+    dataset: "Customer Churn Dataset",
+    updated: "2 hours ago",
+    status: "Profiled",
+    statusColor: "blue",
+    health: "86 / 100",
+    healthTone: "good",
+    lastAnalysis: "Regression Ready",
+  },
+  {
+    key: "retail-sales",
+    dataset: "Retail Sales Q4",
+    updated: "Yesterday",
+    status: "Transformed",
+    statusColor: "purple",
+    health: "72 / 100",
+    healthTone: "warning",
+    lastAnalysis: "Clustering Run",
+  },
+  {
+    key: "fraud-signals",
+    dataset: "Fraud Signals v2",
+    updated: "3 days ago",
+    status: "Issues",
+    statusColor: "red",
+    health: "54 / 100",
+    healthTone: "error",
+    lastAnalysis: "Anomalies Found",
+  },
+];
+
 export default function DashboardPage() {
-  const { logout } = useAuthActions();
-  const { isAuthenticated, isInitialized, profile, session } = useAuthState();
-  const { styles } = useStyles();
+  const { styles, cx } = useStyles();
 
-  if (!isInitialized) {
-    return (
-      <main className={styles.loadingState}>
-        <Spin size="large" />
-      </main>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
+  const columns: ColumnsType<RecentDatasetRow> = [
+    {
+      title: "Dataset",
+      dataIndex: "dataset",
+      key: "dataset",
+    },
+    {
+      title: "Updated",
+      dataIndex: "updated",
+      key: "updated",
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (_, record) => <Tag color={record.statusColor}>{record.status}</Tag>,
+    },
+    {
+      title: "Health",
+      dataIndex: "health",
+      key: "health",
+      render: (_, record) => (
+        <span
+          className={cx(
+            record.healthTone === "good" && styles.healthGood,
+            record.healthTone === "warning" && styles.healthWarning,
+            record.healthTone === "error" && styles.healthError,
+          )}
+        >
+          {record.health}
+        </span>
+      ),
+    },
+    {
+      title: "Last Analysis",
+      dataIndex: "lastAnalysis",
+      key: "lastAnalysis",
+    },
+  ];
 
   return (
-    <main className={styles.page}>
-      <section className={styles.shell}>
-        <div className={styles.header}>
-          <div>
-            <Text className={styles.kicker}>AstraLab Workspace</Text>
-            <Title level={1} className={styles.title}>
-              Welcome back, {profile?.user?.name || profile?.user?.userName || "User"}
-            </Title>
-            <Paragraph className={styles.description}>
-              Your session is active and authenticated requests now flow through the
-              shared auth provider and axios instance.
-            </Paragraph>
-          </div>
+    <>
+      <WorkspacePageHeader
+        title="Dataset Dashboard"
+        description="Upload, profile, analyze, and model your datasets from one workspace."
+      />
 
-          <Button
-            size="large"
-            onClick={() => logout()}
-            className={styles.logoutButton}
-          >
-            Sign Out
-          </Button>
+      <Card className={styles.uploadCard}>
+        <div>
+          <Title level={3} className={styles.uploadTitle}>
+            Upload a New Dataset
+          </Title>
+          <Paragraph className={styles.uploadDescription}>
+            Start a new profiling and analysis workflow by uploading a CSV or JSON
+            file.
+          </Paragraph>
         </div>
 
-        <Row gutter={[20, 20]}>
-          <Col xs={24} md={8}>
-            <Card bordered className={styles.infoCard}>
-              <Text className={styles.cardLabel}>Authenticated User</Text>
-              <Title level={3} className={styles.cardValue}>
-                {profile?.user?.emailAddress || "Unavailable"}
+        <Button type="primary" size="large">
+          Upload Dataset
+        </Button>
+      </Card>
+
+      <Row gutter={[20, 20]}>
+        {DASHBOARD_METRICS.map((metric) => (
+          <Col key={metric.label} xs={24} sm={12} xl={6}>
+            <Card className={styles.metricCard}>
+              <Text className={styles.metricLabel}>{metric.label}</Text>
+              <Title level={3} className={styles.metricValue}>
+                {metric.value}
               </Title>
             </Card>
           </Col>
+        ))}
+      </Row>
 
-          <Col xs={24} md={8}>
-            <Card bordered className={styles.infoCard}>
-              <Text className={styles.cardLabel}>Tenant</Text>
-              <Title level={3} className={styles.cardValue}>
-                {profile?.tenant?.tenancyName || session?.tenancyName || "Default"}
-              </Title>
-            </Card>
-          </Col>
+      <Card className={styles.tableCard}>
+        <Title level={3} className={styles.tableTitle}>
+          Recent Datasets
+        </Title>
 
-          <Col xs={24} md={8}>
-            <Card bordered className={styles.infoCard}>
-              <Text className={styles.cardLabel}>User ID</Text>
-              <Title level={3} className={styles.cardValue}>
-                {session?.userId || "Unknown"}
-              </Title>
-            </Card>
-          </Col>
-        </Row>
-
-        <Card bordered className={styles.summaryCard}>
-          <Title level={4} className={styles.summaryTitle}>
-            Auth wiring completed
-          </Title>
-          <Paragraph className={styles.summaryText}>
-            JWT session storage, request header injection, auth bootstrap, and 401
-            handling are now centralized. This route is the first protected landing
-            page for the frontend.
-          </Paragraph>
-        </Card>
-      </section>
-    </main>
+        <Table<RecentDatasetRow>
+          columns={columns}
+          dataSource={RECENT_DATASETS}
+          pagination={false}
+          className={styles.table}
+          scroll={{ x: 900 }}
+        />
+      </Card>
+    </>
   );
 }

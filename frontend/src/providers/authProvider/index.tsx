@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useContext, useEffect, useReducer, useRef } from "react";
+import { useContext, useReducer } from "react";
 import { useRouter } from "next/navigation";
 import type { PropsWithChildren } from "react";
 import {
@@ -24,7 +24,6 @@ import {
   getAuthSession,
   setAuthSession,
 } from "@/utils/authCookies";
-import { setUnauthorizedHandler } from "@/utils/axiosInstance";
 import {
   authenticate,
   getCurrentLoginInformations,
@@ -117,7 +116,6 @@ function getTenantAvailabilityMessage(
 export function AuthProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(AuthReducer, INITIAL_STATE);
   const router = useRouter();
-  const hasInitialized = useRef(false);
 
   const logout = (options?: { redirectTo?: string }) => {
     clearAuthSession();
@@ -242,27 +240,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       throw error;
     }
   };
-
-  useEffect(() => {
-    setUnauthorizedHandler(() => {
-      clearAuthSession();
-      dispatch(logoutSuccess());
-      router.replace(LOGIN_ROUTE);
-    });
-
-    return () => {
-      setUnauthorizedHandler(null);
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (hasInitialized.current) {
-      return;
-    }
-
-    hasInitialized.current = true;
-    void initializeAuth();
-  }, []);
 
   return (
     <AuthStateContext.Provider value={state}>
