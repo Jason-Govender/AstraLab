@@ -34,12 +34,16 @@ namespace AstraLab.Tests.Services.Datasets
                 result.RowCount.ShouldBe(3);
                 result.DuplicateRowCount.ShouldBe(1);
                 result.DataHealthScore.ShouldBeLessThan(100m);
+                result.SummaryJson.ShouldContain("\"totalAnomalyCount\":0");
+                result.SummaryJson.ShouldContain("\"overallAnomalyPercentage\":0");
 
                 var amountColumn = result.Columns.Single(item => item.DatasetColumnId == 2);
                 amountColumn.InferredDataType.ShouldBe("decimal");
                 amountColumn.NullCount.ShouldBe(1);
                 amountColumn.NullPercentage.ShouldBe(33.33m);
                 amountColumn.DistinctCount.ShouldBe(1);
+                amountColumn.StatisticsJson.ShouldContain("\"anomalyCount\":0");
+                amountColumn.StatisticsJson.ShouldContain("\"hasAnomalies\":false");
                 amountColumn.StatisticsJson.ShouldContain("\"mean\":10.5");
                 amountColumn.StatisticsJson.ShouldContain("\"min\":10.5");
                 amountColumn.StatisticsJson.ShouldContain("\"max\":10.5");
@@ -91,6 +95,87 @@ namespace AstraLab.Tests.Services.Datasets
                 var activeColumn = result.Columns.Single(item => item.DatasetColumnId == 14);
                 activeColumn.InferredDataType.ShouldBe("boolean");
                 activeColumn.NullCount.ShouldBe(0);
+                activeColumn.StatisticsJson.ShouldContain("\"anomalyCount\":0");
+                activeColumn.StatisticsJson.ShouldContain("\"hasAnomalies\":false");
+            }
+        }
+
+        [Fact]
+        public async Task ProfileAsync_Should_Flag_Csv_Numeric_Outliers_And_Lower_Data_Health_Score()
+        {
+            var baselineContent = "value\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n";
+            var outlierContent = "value\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n1\n100\n";
+
+            var baselineResult = await ProfileSingleColumnCsvAsync(baselineContent);
+            var outlierResult = await ProfileSingleColumnCsvAsync(outlierContent);
+
+            var baselineColumn = baselineResult.Columns.Single();
+            baselineColumn.StatisticsJson.ShouldContain("\"anomalyCount\":0");
+            baselineColumn.StatisticsJson.ShouldContain("\"anomalyPercentage\":0");
+            baselineColumn.StatisticsJson.ShouldContain("\"hasAnomalies\":false");
+
+            outlierResult.SummaryJson.ShouldContain("\"totalAnomalyCount\":1");
+            outlierResult.SummaryJson.ShouldContain("\"overallAnomalyPercentage\":4.76");
+            outlierResult.DataHealthScore.ShouldBeLessThan(baselineResult.DataHealthScore);
+
+            var outlierColumn = outlierResult.Columns.Single();
+            outlierColumn.InferredDataType.ShouldBe("integer");
+            outlierColumn.StatisticsJson.ShouldContain("\"anomalyCount\":1");
+            outlierColumn.StatisticsJson.ShouldContain("\"anomalyPercentage\":4.76");
+            outlierColumn.StatisticsJson.ShouldContain("\"hasAnomalies\":true");
+        }
+
+        [Fact]
+        public async Task ProfileAsync_Should_Flag_Json_Numeric_Outliers()
+        {
+            var values = string.Join(",", Enumerable.Repeat("{\"amount\":1}", 20).Concat(new[] { "{\"amount\":100}" }));
+            using (var content = new MemoryStream(Encoding.UTF8.GetBytes("[" + values + "]")))
+            {
+                var result = await _datasetProfiler.ProfileAsync(new ProfileDatasetVersionRequest
+                {
+                    DatasetFormat = DatasetFormat.Json,
+                    Content = content,
+                    Columns = new[]
+                    {
+                        new ProfileDatasetColumnRequest { DatasetColumnId = 21, Name = "amount", Ordinal = 1 }
+                    }
+                });
+
+                result.RowCount.ShouldBe(21);
+                result.SummaryJson.ShouldContain("\"totalAnomalyCount\":1");
+
+                var amountColumn = result.Columns.Single();
+                amountColumn.InferredDataType.ShouldBe("integer");
+                amountColumn.StatisticsJson.ShouldContain("\"anomalyCount\":1");
+                amountColumn.StatisticsJson.ShouldContain("\"hasAnomalies\":true");
+            }
+        }
+
+        [Fact]
+        public async Task ProfileAsync_Should_Not_Flag_Anomalies_For_Insufficient_Or_ZeroVariance_Numeric_Data()
+        {
+            var insufficientResult = await ProfileSingleColumnCsvAsync("value\n1\n1\n1\n100\n");
+            insufficientResult.Columns.Single().StatisticsJson.ShouldContain("\"anomalyCount\":0");
+            insufficientResult.Columns.Single().StatisticsJson.ShouldContain("\"hasAnomalies\":false");
+
+            var zeroVarianceResult = await ProfileSingleColumnCsvAsync("value\n5\n5\n5\n5\n5\n5\n");
+            zeroVarianceResult.Columns.Single().StatisticsJson.ShouldContain("\"anomalyCount\":0");
+            zeroVarianceResult.Columns.Single().StatisticsJson.ShouldContain("\"hasAnomalies\":false");
+        }
+
+        private async Task<ProfileDatasetVersionResult> ProfileSingleColumnCsvAsync(string csvContent)
+        {
+            using (var content = new MemoryStream(Encoding.UTF8.GetBytes(csvContent)))
+            {
+                return await _datasetProfiler.ProfileAsync(new ProfileDatasetVersionRequest
+                {
+                    DatasetFormat = DatasetFormat.Csv,
+                    Content = content,
+                    Columns = new[]
+                    {
+                        new ProfileDatasetColumnRequest { DatasetColumnId = 100, Name = "value", Ordinal = 1 }
+                    }
+                });
             }
         }
     }

@@ -23,6 +23,11 @@ namespace AstraLab.Services.Datasets.Profiling
         private const string BooleanDataType = "boolean";
         private const string StringDataType = "string";
         private const string MixedDataType = "mixed";
+        private const decimal DuplicateRateWeight = 0.3m;
+        private const decimal NullRateWeight = 0.4m;
+        private const decimal AnomalyRateWeight = 0.3m;
+        private const decimal ZScoreThreshold = 3.0m;
+        private const int MinimumNumericObservationsForAnomalyDetection = 5;
 
         /// <summary>
         /// Profiles the supplied dataset content.
@@ -239,29 +244,53 @@ namespace AstraLab.Services.Datasets.Profiling
             var totalNullCount = columnStates.Sum(item => item.NullCount);
             var totalCells = rowCount > 0 && columnStates.Count > 0 ? rowCount * columnStates.Count : 0;
             var overallNullPercentage = totalCells == 0 ? 0m : RoundPercentage((decimal)totalNullCount / totalCells);
+            var totalAnomalyCount = columnStates.Sum(item => item.GetAnomalyCount());
+            var totalNumericObservationCount = columnStates.Sum(item => item.GetNumericObservationCount());
+            var overallAnomalyPercentage = totalNumericObservationCount == 0
+                ? 0m
+                : RoundPercentage((decimal)totalAnomalyCount / totalNumericObservationCount);
             var duplicateRate = rowCount == 0 ? 0m : (decimal)duplicateRowCount / rowCount;
             var overallNullRate = totalCells == 0 ? 0m : (decimal)totalNullCount / totalCells;
-            var dataHealthScore = Math.Max(0m, Math.Round(100m * (1m - (0.5m * duplicateRate) - (0.5m * overallNullRate)), 2, MidpointRounding.AwayFromZero));
+            var anomalyRate = totalNumericObservationCount == 0 ? 0m : (decimal)totalAnomalyCount / totalNumericObservationCount;
+            var weightedRisk = (NullRateWeight * overallNullRate) + (DuplicateRateWeight * duplicateRate) + (AnomalyRateWeight * anomalyRate);
+            var dataHealthScore = Math.Max(0m, Math.Round(100m * (1m - weightedRisk), 2, MidpointRounding.AwayFromZero));
 
             return new ProfileDatasetVersionResult
             {
                 RowCount = rowCount,
                 DuplicateRowCount = duplicateRowCount,
                 DataHealthScore = dataHealthScore,
-                SummaryJson = DatasetProfileSerialization.BuildSummaryJson(totalNullCount, overallNullPercentage),
+                SummaryJson = DatasetProfileSerialization.BuildSummaryJson(
+                    totalNullCount,
+                    overallNullPercentage,
+                    totalAnomalyCount,
+                    overallAnomalyPercentage),
                 Columns = columnStates
-                    .Select(item => new ProfiledDatasetColumnResult
+                    .Select(item =>
                     {
-                        DatasetColumnId = item.DatasetColumnId,
-                        InferredDataType = item.GetFinalDataType(),
-                        NullCount = item.NullCount,
-                        NullPercentage = rowCount == 0 ? 0m : RoundPercentage((decimal)item.NullCount / rowCount),
-                        DistinctCount = item.GetDistinctCount(),
-                        StatisticsJson = DatasetProfileSerialization.BuildColumnStatisticsJson(
-                            rowCount == 0 ? 0m : RoundPercentage((decimal)item.NullCount / rowCount),
-                            item.GetMean(),
-                            item.GetMin(),
-                            item.GetMax())
+                        var nullPercentage = rowCount == 0 ? 0m : RoundPercentage((decimal)item.NullCount / rowCount);
+                        var anomalyCount = item.GetAnomalyCount();
+                        var numericObservationCount = item.GetNumericObservationCount();
+                        var anomalyPercentage = numericObservationCount == 0
+                            ? 0m
+                            : RoundPercentage((decimal)anomalyCount / numericObservationCount);
+
+                        return new ProfiledDatasetColumnResult
+                        {
+                            DatasetColumnId = item.DatasetColumnId,
+                            InferredDataType = item.GetFinalDataType(),
+                            NullCount = item.NullCount,
+                            NullPercentage = nullPercentage,
+                            DistinctCount = item.GetDistinctCount(),
+                            StatisticsJson = DatasetProfileSerialization.BuildColumnStatisticsJson(
+                                nullPercentage,
+                                item.GetMean(),
+                                item.GetMin(),
+                                item.GetMax(),
+                                anomalyCount,
+                                anomalyPercentage,
+                                anomalyCount > 0)
+                        };
                     })
                     .ToList()
             };
@@ -337,6 +366,7 @@ namespace AstraLab.Services.Datasets.Profiling
         private class ColumnProfilingState
         {
             private readonly HashSet<string> _distinctValues = new HashSet<string>(StringComparer.Ordinal);
+            private readonly List<decimal> _numericValues = new List<decimal>();
             private string _inferredDataType;
             private decimal _numericSum;
             private decimal? _numericMin;
@@ -405,6 +435,38 @@ namespace AstraLab.Services.Datasets.Profiling
                 return _distinctValues.Count;
             }
 
+            public long GetNumericObservationCount()
+            {
+                return IsEligibleForAnomalyDetection() ? _numericValues.Count : 0;
+            }
+
+            public long GetAnomalyCount()
+            {
+                if (!IsEligibleForAnomalyDetection())
+                {
+                    return 0;
+                }
+
+                var mean = _numericSum / _numericCount;
+                var variance = _numericValues
+                    .Select(item => (item - mean) * (item - mean))
+                    .Average();
+
+                if (variance <= 0m)
+                {
+                    return 0;
+                }
+
+                var standardDeviation = (decimal)Math.Sqrt((double)variance);
+                if (standardDeviation <= 0m)
+                {
+                    return 0;
+                }
+
+                return _numericValues.LongCount(item =>
+                    Math.Abs((item - mean) / standardDeviation) >= ZScoreThreshold);
+            }
+
             public decimal? GetMean()
             {
                 if (!IsNumericType())
@@ -434,10 +496,16 @@ namespace AstraLab.Services.Datasets.Profiling
                        string.Equals(finalType, DecimalDataType, StringComparison.Ordinal);
             }
 
+            private bool IsEligibleForAnomalyDetection()
+            {
+                return IsNumericType() && _numericValues.Count >= MinimumNumericObservationsForAnomalyDetection;
+            }
+
             private void ObserveNumericValue(decimal value)
             {
                 _numericCount++;
                 _numericSum += value;
+                _numericValues.Add(value);
                 _numericMin = !_numericMin.HasValue || value < _numericMin.Value ? value : _numericMin.Value;
                 _numericMax = !_numericMax.HasValue || value > _numericMax.Value ? value : _numericMax.Value;
             }

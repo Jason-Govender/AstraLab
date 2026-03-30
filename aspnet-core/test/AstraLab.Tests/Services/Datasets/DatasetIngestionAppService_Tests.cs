@@ -55,6 +55,8 @@ namespace AstraLab.Tests.Services.Datasets
             result.Columns[1].Name.ShouldBe("name");
             result.SchemaJson.ShouldContain("\"format\":\"csv\"");
             result.SchemaJson.ShouldContain("\"rootKind\":\"tabular\"");
+            result.ColumnProfiles[0].StatisticsJson.ShouldContain("\"anomalyCount\":0");
+            result.ColumnProfiles[0].StatisticsJson.ShouldContain("\"hasAnomalies\":false");
 
             await UsingDbContextAsync(async context =>
             {
@@ -76,6 +78,8 @@ namespace AstraLab.Tests.Services.Datasets
                 datasetVersion.RowCount.ShouldBe(2);
                 datasetVersion.ColumnCount.ShouldBe(2);
                 datasetVersion.SchemaJson.ShouldContain("\"columns\"");
+                context.DatasetProfiles.Single().SummaryJson.ShouldContain("\"totalAnomalyCount\":0");
+                context.DatasetProfiles.Single().SummaryJson.ShouldContain("\"overallAnomalyPercentage\":0");
                 datasetFile.DatasetVersionId.ShouldBe(datasetVersion.Id);
                 datasetColumns[0].Name.ShouldBe("id");
                 datasetColumns[0].DataType.ShouldBe("integer");

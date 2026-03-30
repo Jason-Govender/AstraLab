@@ -207,7 +207,7 @@ namespace AstraLab.Tests.Services.Datasets
                     RowCount = 10,
                     DuplicateRowCount = 1,
                     DataHealthScore = 92.50m,
-                    SummaryJson = "{\"totalNullCount\":2}"
+                    SummaryJson = "{\"totalNullCount\":2,\"overallNullPercentage\":6.67,\"totalAnomalyCount\":1,\"overallAnomalyPercentage\":10.0}"
                 }).Entity;
 
                 context.SaveChanges();
@@ -220,7 +220,7 @@ namespace AstraLab.Tests.Services.Datasets
                     InferredDataType = "integer",
                     NullCount = 0,
                     DistinctCount = 10,
-                    StatisticsJson = "{\"nullPercentage\":0,\"mean\":5.5,\"min\":1,\"max\":10}"
+                    StatisticsJson = "{\"nullPercentage\":0,\"mean\":5.5,\"min\":1,\"max\":10,\"anomalyCount\":1,\"anomalyPercentage\":10.0,\"hasAnomalies\":true}"
                 });
 
                 context.SaveChanges();
@@ -245,7 +245,9 @@ namespace AstraLab.Tests.Services.Datasets
             output.SelectedVersion.Profile.RowCount.ShouldBe(10);
             output.SelectedVersion.Profile.DuplicateRowCount.ShouldBe(1);
             output.SelectedVersion.Profile.DataHealthScore.ShouldBe(92.50m);
+            output.SelectedVersion.Profile.SummaryJson.ShouldContain("\"totalAnomalyCount\":1");
             output.SelectedVersion.Profile.ColumnProfiles.Count.ShouldBe(1);
+            output.SelectedVersion.Profile.ColumnProfiles.Single().StatisticsJson.ShouldContain("\"hasAnomalies\":true");
             output.SelectedVersion.RawFile.ShouldNotBeNull();
             output.SelectedVersion.RawFile.OriginalFileName.ShouldBe("details.json");
             output.SelectedVersion.RawFile.ContentType.ShouldBe("application/json");

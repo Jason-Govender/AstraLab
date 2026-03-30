@@ -16,12 +16,18 @@ namespace AstraLab.Services.Datasets.Profiling
         /// <summary>
         /// Builds the serialized dataset-level summary payload.
         /// </summary>
-        public static string BuildSummaryJson(long totalNullCount, decimal overallNullPercentage)
+        public static string BuildSummaryJson(
+            long totalNullCount,
+            decimal overallNullPercentage,
+            long totalAnomalyCount,
+            decimal overallAnomalyPercentage)
         {
             return JsonSerializer.Serialize(new DatasetProfileSummaryPayload
             {
                 TotalNullCount = totalNullCount,
-                OverallNullPercentage = overallNullPercentage
+                OverallNullPercentage = overallNullPercentage,
+                TotalAnomalyCount = totalAnomalyCount,
+                OverallAnomalyPercentage = overallAnomalyPercentage
             }, SerializerOptions);
         }
 
@@ -32,14 +38,20 @@ namespace AstraLab.Services.Datasets.Profiling
             decimal nullPercentage,
             decimal? mean,
             decimal? min,
-            decimal? max)
+            decimal? max,
+            long anomalyCount,
+            decimal anomalyPercentage,
+            bool hasAnomalies)
         {
             return JsonSerializer.Serialize(new DatasetColumnStatisticsPayload
             {
                 NullPercentage = nullPercentage,
                 Mean = mean,
                 Min = min,
-                Max = max
+                Max = max,
+                AnomalyCount = anomalyCount,
+                AnomalyPercentage = anomalyPercentage,
+                HasAnomalies = hasAnomalies
             }, SerializerOptions);
         }
 
@@ -62,6 +74,10 @@ namespace AstraLab.Services.Datasets.Profiling
             public long TotalNullCount { get; set; }
 
             public decimal OverallNullPercentage { get; set; }
+
+            public long TotalAnomalyCount { get; set; }
+
+            public decimal OverallAnomalyPercentage { get; set; }
         }
 
         private class DatasetColumnStatisticsPayload
@@ -73,6 +89,12 @@ namespace AstraLab.Services.Datasets.Profiling
             public decimal? Min { get; set; }
 
             public decimal? Max { get; set; }
+
+            public long AnomalyCount { get; set; }
+
+            public decimal AnomalyPercentage { get; set; }
+
+            public bool HasAnomalies { get; set; }
         }
     }
 }
