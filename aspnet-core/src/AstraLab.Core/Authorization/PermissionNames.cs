@@ -2,6 +2,8 @@
 {
     public static class PermissionNames
     {
+        public const string Pages_Datasets = "Pages.Datasets";
+
         public const string Pages_Tenants = "Pages.Tenants";
 
         public const string Pages_Users = "Pages.Users";

@@ -6,13 +6,17 @@ using Microsoft.IdentityModel.Tokens;
 using Abp.AspNetCore;
 using Abp.AspNetCore.Configuration;
 using Abp.AspNetCore.SignalR;
+using Castle.MicroKernel.Registration;
 using Abp.Modules;
 using Abp.Reflection.Extensions;
 using Abp.Zero.Configuration;
 using AstraLab.Authentication.JwtBearer;
 using AstraLab.Configuration;
 using AstraLab.EntityFrameworkCore;
+using AstraLab.Services.Datasets.Storage;
+using AstraLab.Web.Core.Datasets.Storage;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using System.IO;
 
 namespace AstraLab
 {
@@ -47,6 +51,7 @@ namespace AstraLab
                      typeof(AstraLabApplicationModule).GetAssembly()
                  );
 
+            RegisterDatasetStorage();
             ConfigureTokenAuth();
         }
 
@@ -71,6 +76,25 @@ namespace AstraLab
         {
             IocManager.Resolve<ApplicationPartManager>()
                 .AddApplicationPartsIfNotAddedBefore(typeof(AstraLabWebCoreModule).Assembly);
+        }
+
+        private void RegisterDatasetStorage()
+        {
+            var configuredRawRootPath = _appConfiguration["DatasetStorage:RawRootPath"];
+            var resolvedRawRootPath = Path.IsPathRooted(configuredRawRootPath)
+                ? configuredRawRootPath
+                : Path.GetFullPath(Path.Combine(_env.ContentRootPath, configuredRawRootPath));
+
+            IocManager.IocContainer.Register(
+                Component.For<DatasetStorageOptions>()
+                    .Instance(new DatasetStorageOptions
+                    {
+                        RawRootPath = resolvedRawRootPath
+                    })
+                    .LifestyleSingleton(),
+                Component.For<IRawDatasetStorage>()
+                    .ImplementedBy<LocalFileSystemRawDatasetStorage>()
+                    .LifestyleTransient());
         }
     }
 }
