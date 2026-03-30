@@ -1,5 +1,6 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
+using System.Collections.Generic;
 
 namespace AstraLab.Core.Domains.Datasets
 {
@@ -62,5 +63,10 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the distinct value count when known.
         /// </summary>
         public long? DistinctCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted profiling rows that describe this dataset column.
+        /// </summary>
+        public ICollection<DatasetColumnProfile> Profiles { get; set; } = new List<DatasetColumnProfile>();
     }
 }
