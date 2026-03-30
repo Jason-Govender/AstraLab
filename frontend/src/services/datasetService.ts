@@ -1,0 +1,81 @@
+import type { AbpApiResponse, AbpPagedResult } from "@/types/api";
+import type {
+  DatasetCatalogFilters,
+  DatasetDetails,
+  DatasetListItem,
+  UploadedRawDatasetResult,
+  UploadRawDatasetPayload,
+} from "@/types/datasets";
+import { axiosInstance } from "@/utils/axiosInstance";
+
+const DATASET_UPLOAD_ENDPOINT = "/api/services/app/datasets/upload-raw";
+const DATASET_GET_ALL_ENDPOINT = "/api/services/app/Dataset/GetAll";
+const DATASET_GET_DETAILS_ENDPOINT = "/api/services/app/Dataset/GetDetails";
+
+const buildUploadFormData = ({
+  name,
+  description,
+  file,
+}: UploadRawDatasetPayload): FormData => {
+  const formData = new FormData();
+
+  formData.append("name", name);
+
+  if (description?.trim()) {
+    formData.append("description", description.trim());
+  }
+
+  formData.append("file", file);
+
+  return formData;
+};
+
+export const uploadRawDataset = async (
+  payload: UploadRawDatasetPayload,
+): Promise<UploadedRawDatasetResult> => {
+  const response = await axiosInstance.post<UploadedRawDatasetResult>(
+    DATASET_UPLOAD_ENDPOINT,
+    buildUploadFormData(payload),
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return response.data;
+};
+
+export const getDatasets = async (
+  filters: DatasetCatalogFilters,
+): Promise<AbpPagedResult<DatasetListItem>> => {
+  const response = await axiosInstance.get<
+    AbpApiResponse<AbpPagedResult<DatasetListItem>>
+  >(DATASET_GET_ALL_ENDPOINT, {
+    params: {
+      keyword: filters.keyword || undefined,
+      status: filters.status,
+      skipCount: (filters.page - 1) * filters.pageSize,
+      maxResultCount: filters.pageSize,
+    },
+  });
+
+  return response.data.result;
+};
+
+export const getDatasetDetails = async (
+  datasetId: number,
+  selectedVersionId?: number,
+): Promise<DatasetDetails> => {
+  const response = await axiosInstance.get<AbpApiResponse<DatasetDetails>>(
+    DATASET_GET_DETAILS_ENDPOINT,
+    {
+      params: {
+        datasetId,
+        selectedVersionId,
+      },
+    },
+  );
+
+  return response.data.result;
+};

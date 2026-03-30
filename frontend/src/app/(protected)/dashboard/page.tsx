@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Button, Card, Col, Row, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
@@ -75,8 +76,9 @@ const RECENT_DATASETS: RecentDatasetRow[] = [
   },
 ];
 
-export default function DashboardPage() {
+const DashboardPage = () => {
   const { styles, cx } = useStyles();
+  const router = useRouter();
 
   const columns: ColumnsType<RecentDatasetRow> = [
     {
@@ -136,7 +138,11 @@ export default function DashboardPage() {
           </Paragraph>
         </div>
 
-        <Button type="primary" size="large">
+        <Button
+          type="primary"
+          size="large"
+          onClick={() => router.push("/datasets/upload")}
+        >
           Upload Dataset
         </Button>
       </Card>
@@ -169,4 +175,6 @@ export default function DashboardPage() {
       </Card>
     </>
   );
-}
+};
+
+export default DashboardPage;

@@ -14,7 +14,7 @@ export const WORKSPACE_NAVIGATION: WorkspaceNavItem[] = [
     label: "Datasets",
     href: "/datasets",
     icon: "datasets",
-    isAvailable: false,
+    isAvailable: true,
   },
   {
     key: "analysis",

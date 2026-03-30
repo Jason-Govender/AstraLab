@@ -11,3 +11,8 @@ export interface AbpApiResponse<T> {
   unAuthorizedRequest?: boolean;
   __abp?: boolean;
 }
+
+export interface AbpPagedResult<T> {
+  items: T[];
+  totalCount: number;
+}
