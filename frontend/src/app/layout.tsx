@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthBootstrap } from "@/components/AuthBootstrap";
 import { AppThemeProvider } from "@/components/AppThemeProvider";
 import { AuthProvider } from "@/providers/authProvider";
 import "./globals.css";
@@ -17,7 +18,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AppThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <AuthBootstrap />
+            {children}
+          </AuthProvider>
         </AppThemeProvider>
       </body>
     </html>

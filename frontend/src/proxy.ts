@@ -6,12 +6,21 @@ import {
   LOGIN_ROUTE,
   REGISTER_ROUTE,
 } from "./constants/auth";
+import { WORKSPACE_NAVIGATION } from "./constants/workspace";
 import { parseAuthSession } from "./utils/authCookies";
+
+const PROTECTED_ROUTE_PREFIXES = WORKSPACE_NAVIGATION.map(({ href }) => href);
 
 function clearInvalidAuthCookie(response: NextResponse) {
   response.cookies.delete(AUTH_SESSION_COOKIE_NAME);
 
   return response;
+}
+
+function isProtectedRoute(pathname: string) {
+  return PROTECTED_ROUTE_PREFIXES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
 }
 
 export function proxy(request: NextRequest) {
@@ -29,7 +38,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(DASHBOARD_ROUTE, request.url));
   }
 
-  if (pathname.startsWith(DASHBOARD_ROUTE) && !hasValidSession) {
+  if (isProtectedRoute(pathname) && !hasValidSession) {
     const response = NextResponse.redirect(new URL(LOGIN_ROUTE, request.url));
 
     return hasSessionCookie ? clearInvalidAuthCookie(response) : response;
@@ -47,5 +56,15 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/register", "/dashboard/:path*"],
+  matcher: [
+    "/login",
+    "/register",
+    "/dashboard/:path*",
+    "/datasets/:path*",
+    "/analysis/:path*",
+    "/ai-assistant/:path*",
+    "/ml-workspace/:path*",
+    "/reports/:path*",
+    "/settings/:path*",
+  ],
 };
