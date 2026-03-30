@@ -21,8 +21,13 @@ namespace AstraLab.Services.Datasets
         Task<DatasetDto> GetAsync(EntityDto<long> input);
 
         /// <summary>
+        /// Gets the composite dataset details payload for the details page.
+        /// </summary>
+        Task<DatasetDetailsDto> GetDetailsAsync(GetDatasetDetailsInput input);
+
+        /// <summary>
         /// Gets paged datasets for the current tenant.
         /// </summary>
-        Task<PagedResultDto<DatasetDto>> GetAllAsync(PagedDatasetResultRequestDto input);
+        Task<PagedResultDto<DatasetListItemDto>> GetAllAsync(PagedDatasetResultRequestDto input);
     }
 }

@@ -22,13 +22,23 @@ namespace AstraLab.Services.Datasets
     public class DatasetAppService : AstraLabAppServiceBase, IDatasetAppService
     {
         private readonly IRepository<Dataset, long> _datasetRepository;
+        private readonly IRepository<DatasetVersion, long> _datasetVersionRepository;
+        private readonly IRepository<DatasetColumn, long> _datasetColumnRepository;
+        private readonly IRepository<DatasetFile, long> _datasetFileRepository;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatasetAppService"/> class.
         /// </summary>
-        public DatasetAppService(IRepository<Dataset, long> datasetRepository)
+        public DatasetAppService(
+            IRepository<Dataset, long> datasetRepository,
+            IRepository<DatasetVersion, long> datasetVersionRepository,
+            IRepository<DatasetColumn, long> datasetColumnRepository,
+            IRepository<DatasetFile, long> datasetFileRepository)
         {
             _datasetRepository = datasetRepository;
+            _datasetVersionRepository = datasetVersionRepository;
+            _datasetColumnRepository = datasetColumnRepository;
+            _datasetFileRepository = datasetFileRepository;
         }
 
         /// <summary>
@@ -70,17 +80,91 @@ namespace AstraLab.Services.Datasets
         }
 
         /// <summary>
-        /// Gets paged datasets for the current tenant.
+        /// Gets the composite dataset details payload for the current owner and tenant.
         /// </summary>
-        public async Task<PagedResultDto<DatasetDto>> GetAllAsync(PagedDatasetResultRequestDto input)
+        public async Task<DatasetDetailsDto> GetDetailsAsync(GetDatasetDetailsInput input)
         {
             var tenantId = GetRequiredTenantId();
+            var ownerUserId = AbpSession.GetUserId();
 
-            var query = _datasetRepository.GetAll()
-                .Where(item => item.TenantId == tenantId)
-                .WhereIf(!input.Keyword.IsNullOrWhiteSpace(),
-                    item => item.Name.Contains(input.Keyword) || item.Description.Contains(input.Keyword))
-                .WhereIf(input.Status.HasValue, item => item.Status == input.Status.Value);
+            var dataset = await GetDatasetForOwnerAsync(input.DatasetId, tenantId, ownerUserId);
+
+            var versions = await _datasetVersionRepository.GetAll()
+                .Where(item => item.TenantId == tenantId && item.DatasetId == dataset.Id)
+                .OrderByDescending(item => item.VersionNumber)
+                .ToListAsync();
+
+            var selectedVersionId = input.SelectedVersionId ?? dataset.CurrentVersionId;
+            DatasetVersion selectedVersion = null;
+
+            if (selectedVersionId.HasValue)
+            {
+                selectedVersion = versions.FirstOrDefault(item => item.Id == selectedVersionId.Value);
+                if (selectedVersion == null)
+                {
+                    throw new UserFriendlyException("The selected dataset version does not belong to the requested dataset.");
+                }
+            }
+
+            var columns = selectedVersion == null
+                ? new System.Collections.Generic.List<DatasetColumn>()
+                : await _datasetColumnRepository.GetAll()
+                    .Where(item => item.TenantId == tenantId && item.DatasetVersionId == selectedVersion.Id)
+                    .OrderBy(item => item.Ordinal)
+                    .ToListAsync();
+
+            DatasetFile rawFile = null;
+            if (selectedVersion != null)
+            {
+                rawFile = await _datasetFileRepository.GetAll()
+                    .Where(item => item.TenantId == tenantId && item.DatasetVersionId == selectedVersion.Id)
+                    .FirstOrDefaultAsync();
+            }
+
+            return new DatasetDetailsDto
+            {
+                Dataset = ObjectMapper.Map<DatasetDto>(dataset),
+                Versions = versions.Select(MapToDatasetVersionSummaryDto).ToList(),
+                SelectedVersion = selectedVersion == null ? null : MapToDatasetVersionDetailsDto(selectedVersion, rawFile),
+                Columns = ObjectMapper.Map<System.Collections.Generic.List<DatasetColumnDto>>(columns)
+            };
+        }
+
+        /// <summary>
+        /// Gets paged datasets for the current tenant.
+        /// </summary>
+        public async Task<PagedResultDto<DatasetListItemDto>> GetAllAsync(PagedDatasetResultRequestDto input)
+        {
+            var tenantId = GetRequiredTenantId();
+            var ownerUserId = AbpSession.GetUserId();
+
+            var currentVersions = _datasetVersionRepository.GetAll()
+                .Where(item => item.TenantId == tenantId);
+
+            var query =
+                from dataset in _datasetRepository.GetAll()
+                where dataset.TenantId == tenantId && dataset.OwnerUserId == ownerUserId
+                join currentVersion in currentVersions
+                    on dataset.CurrentVersionId equals (long?)currentVersion.Id into currentVersionJoin
+                from currentVersion in currentVersionJoin.DefaultIfEmpty()
+                where input.Keyword.IsNullOrWhiteSpace() ||
+                      dataset.Name.Contains(input.Keyword) ||
+                      (dataset.Description != null && dataset.Description.Contains(input.Keyword))
+                where !input.Status.HasValue || dataset.Status == input.Status.Value
+                select new DatasetListItemDto
+                {
+                    Id = dataset.Id,
+                    Name = dataset.Name,
+                    Description = dataset.Description,
+                    SourceFormat = dataset.SourceFormat,
+                    Status = dataset.Status,
+                    OriginalFileName = dataset.OriginalFileName,
+                    CreationTime = dataset.CreationTime,
+                    CurrentVersionId = dataset.CurrentVersionId,
+                    CurrentVersionNumber = currentVersion != null ? (int?)currentVersion.VersionNumber : null,
+                    CurrentVersionStatus = currentVersion != null ? (DatasetVersionStatus?)currentVersion.Status : null,
+                    ColumnCount = currentVersion != null ? currentVersion.ColumnCount : null
+                };
 
             var totalCount = await query.CountAsync();
 
@@ -89,9 +173,7 @@ namespace AstraLab.Services.Datasets
                 .PageBy(input)
                 .ToListAsync();
 
-            return new PagedResultDto<DatasetDto>(
-                totalCount,
-                ObjectMapper.Map<System.Collections.Generic.List<DatasetDto>>(datasets));
+            return new PagedResultDto<DatasetListItemDto>(totalCount, datasets);
         }
 
         private int GetRequiredTenantId()
@@ -102,6 +184,69 @@ namespace AstraLab.Services.Datasets
             }
 
             return AbpSession.TenantId.Value;
+        }
+
+        /// <summary>
+        /// Gets a dataset for the current tenant owner.
+        /// </summary>
+        private async Task<Dataset> GetDatasetForOwnerAsync(long datasetId, int tenantId, long ownerUserId)
+        {
+            var dataset = await _datasetRepository.GetAll()
+                .Where(item => item.TenantId == tenantId && item.OwnerUserId == ownerUserId && item.Id == datasetId)
+                .FirstOrDefaultAsync();
+
+            if (dataset == null)
+            {
+                throw new EntityNotFoundException(typeof(Dataset), datasetId);
+            }
+
+            return dataset;
+        }
+
+        /// <summary>
+        /// Maps a dataset version to the lightweight summary shape used by the details page.
+        /// </summary>
+        private static DatasetVersionSummaryDto MapToDatasetVersionSummaryDto(DatasetVersion datasetVersion)
+        {
+            return new DatasetVersionSummaryDto
+            {
+                Id = datasetVersion.Id,
+                VersionNumber = datasetVersion.VersionNumber,
+                VersionType = datasetVersion.VersionType,
+                Status = datasetVersion.Status,
+                CreationTime = datasetVersion.CreationTime,
+                ColumnCount = datasetVersion.ColumnCount
+            };
+        }
+
+        /// <summary>
+        /// Maps the selected dataset version and optional raw file into the details shape.
+        /// </summary>
+        private static DatasetVersionDetailsDto MapToDatasetVersionDetailsDto(DatasetVersion datasetVersion, DatasetFile rawFile)
+        {
+            return new DatasetVersionDetailsDto
+            {
+                Id = datasetVersion.Id,
+                DatasetId = datasetVersion.DatasetId,
+                VersionNumber = datasetVersion.VersionNumber,
+                VersionType = datasetVersion.VersionType,
+                Status = datasetVersion.Status,
+                ParentVersionId = datasetVersion.ParentVersionId,
+                RowCount = datasetVersion.RowCount,
+                ColumnCount = datasetVersion.ColumnCount,
+                SchemaJson = datasetVersion.SchemaJson,
+                SizeBytes = datasetVersion.SizeBytes,
+                CreationTime = datasetVersion.CreationTime,
+                RawFile = rawFile == null
+                    ? null
+                    : new DatasetFileSummaryDto
+                    {
+                        OriginalFileName = rawFile.OriginalFileName,
+                        ContentType = rawFile.ContentType,
+                        SizeBytes = rawFile.SizeBytes,
+                        CreationTime = rawFile.CreationTime
+                    }
+            };
         }
     }
 }
