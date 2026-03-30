@@ -1,5 +1,6 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
+using System.Collections.Generic;
 
 namespace AstraLab.Core.Domains.Datasets
 {
@@ -67,5 +68,10 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the dataset version size in bytes.
         /// </summary>
         public long SizeBytes { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted columns recorded for the dataset version.
+        /// </summary>
+        public ICollection<DatasetColumn> Columns { get; set; } = new List<DatasetColumn>();
     }
 }
