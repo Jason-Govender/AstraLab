@@ -51,5 +51,25 @@ namespace AstraLab.Services.Datasets.Dto
         /// Gets or sets the extracted columns returned from the upload workflow.
         /// </summary>
         public List<DatasetColumnDto> Columns { get; set; } = new List<DatasetColumnDto>();
+
+        /// <summary>
+        /// Gets or sets the profiled row count for the uploaded dataset version.
+        /// </summary>
+        public long RowCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the profiled duplicate row count for the uploaded dataset version.
+        /// </summary>
+        public long DuplicateRowCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the profiled data health score for the uploaded dataset version.
+        /// </summary>
+        public decimal DataHealthScore { get; set; }
+
+        /// <summary>
+        /// Gets or sets the profiled column statistics for the uploaded dataset version.
+        /// </summary>
+        public List<DatasetColumnProfileDto> ColumnProfiles { get; set; } = new List<DatasetColumnProfileDto>();
     }
 }

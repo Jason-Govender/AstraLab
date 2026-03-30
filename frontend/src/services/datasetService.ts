@@ -1,8 +1,11 @@
 import type { AbpApiResponse, AbpPagedResult } from "@/types/api";
 import type {
   DatasetCatalogFilters,
+  DatasetColumnInsight,
   DatasetDetails,
   DatasetListItem,
+  DatasetProfileColumnsRequest,
+  DatasetProfileSummary,
   UploadedRawDatasetResult,
   UploadRawDatasetPayload,
 } from "@/types/datasets";
@@ -11,6 +14,9 @@ import { axiosInstance } from "@/utils/axiosInstance";
 const DATASET_UPLOAD_ENDPOINT = "/api/services/app/datasets/upload-raw";
 const DATASET_GET_ALL_ENDPOINT = "/api/services/app/Dataset/GetAll";
 const DATASET_GET_DETAILS_ENDPOINT = "/api/services/app/Dataset/GetDetails";
+const DATASET_PROFILE_GET_ENDPOINT = "/api/services/app/DatasetProfiling/Get";
+const DATASET_PROFILE_GET_COLUMNS_ENDPOINT =
+  "/api/services/app/DatasetProfiling/GetColumns";
 
 const buildUploadFormData = ({
   name,
@@ -76,6 +82,39 @@ export const getDatasetDetails = async (
       },
     },
   );
+
+  return response.data.result;
+};
+
+export const getDatasetProfile = async (
+  datasetVersionId: number,
+): Promise<DatasetProfileSummary> => {
+  const response = await axiosInstance.get<AbpApiResponse<DatasetProfileSummary>>(
+    DATASET_PROFILE_GET_ENDPOINT,
+    {
+      params: {
+        id: datasetVersionId,
+      },
+    },
+  );
+
+  return response.data.result;
+};
+
+export const getDatasetProfileColumns = async (
+  request: DatasetProfileColumnsRequest,
+): Promise<AbpPagedResult<DatasetColumnInsight>> => {
+  const response = await axiosInstance.get<
+    AbpApiResponse<AbpPagedResult<DatasetColumnInsight>>
+  >(DATASET_PROFILE_GET_COLUMNS_ENDPOINT, {
+    params: {
+      datasetVersionId: request.datasetVersionId,
+      skipCount: (request.page - 1) * request.pageSize,
+      maxResultCount: request.pageSize,
+      hasAnomalies: request.hasAnomalies,
+      inferredDataType: request.inferredDataType || undefined,
+    },
+  });
 
   return response.data.result;
 };

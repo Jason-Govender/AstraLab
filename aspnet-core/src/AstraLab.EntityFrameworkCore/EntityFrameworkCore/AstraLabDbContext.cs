@@ -31,6 +31,16 @@ namespace AstraLab.EntityFrameworkCore
         /// </summary>
         public DbSet<DatasetFile> DatasetFiles { get; set; }
 
+        /// <summary>
+        /// Gets or sets the persisted dataset-level profiling snapshots.
+        /// </summary>
+        public DbSet<DatasetProfile> DatasetProfiles { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted column-level profiling snapshots.
+        /// </summary>
+        public DbSet<DatasetColumnProfile> DatasetColumnProfiles { get; set; }
+
         public AstraLabDbContext(DbContextOptions<AstraLabDbContext> options)
             : base(options)
         {
@@ -146,6 +156,55 @@ namespace AstraLab.EntityFrameworkCore
 
                 entity.HasIndex(datasetFile => new { datasetFile.StorageProvider, datasetFile.StorageKey })
                     .IsUnique();
+            });
+
+            modelBuilder.Entity<DatasetProfile>(entity =>
+            {
+                entity.ToTable("DatasetProfiles");
+
+                entity.Property(datasetProfile => datasetProfile.DataHealthScore)
+                    .HasPrecision(5, 2);
+
+                entity.Property(datasetProfile => datasetProfile.SummaryJson)
+                    .HasColumnType(DatasetProfile.SummaryJsonColumnType);
+
+                entity.HasOne(datasetProfile => datasetProfile.DatasetVersion)
+                    .WithOne(datasetVersion => datasetVersion.Profile)
+                    .HasForeignKey<DatasetProfile>(datasetProfile => datasetProfile.DatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(datasetProfile => datasetProfile.DatasetVersionId)
+                    .IsUnique();
+
+                entity.HasIndex(datasetProfile => new { datasetProfile.TenantId, datasetProfile.DatasetVersionId });
+            });
+
+            modelBuilder.Entity<DatasetColumnProfile>(entity =>
+            {
+                entity.ToTable("DatasetColumnProfiles");
+
+                entity.Property(datasetColumnProfile => datasetColumnProfile.InferredDataType)
+                    .IsRequired()
+                    .HasMaxLength(DatasetColumnProfile.MaxInferredDataTypeLength);
+
+                entity.Property(datasetColumnProfile => datasetColumnProfile.StatisticsJson)
+                    .HasColumnType(DatasetColumnProfile.StatisticsJsonColumnType);
+
+                entity.HasOne(datasetColumnProfile => datasetColumnProfile.DatasetProfile)
+                    .WithMany(datasetProfile => datasetProfile.ColumnProfiles)
+                    .HasForeignKey(datasetColumnProfile => datasetColumnProfile.DatasetProfileId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(datasetColumnProfile => datasetColumnProfile.DatasetColumn)
+                    .WithMany(datasetColumn => datasetColumn.Profiles)
+                    .HasForeignKey(datasetColumnProfile => datasetColumnProfile.DatasetColumnId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(datasetColumnProfile => new { datasetColumnProfile.DatasetProfileId, datasetColumnProfile.DatasetColumnId })
+                    .IsUnique();
+
+                entity.HasIndex(datasetColumnProfile => new { datasetColumnProfile.TenantId, datasetColumnProfile.DatasetProfileId });
+                entity.HasIndex(datasetColumnProfile => datasetColumnProfile.DatasetColumnId);
             });
         }
     }

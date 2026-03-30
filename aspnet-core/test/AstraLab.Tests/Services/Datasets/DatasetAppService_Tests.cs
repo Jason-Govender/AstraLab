@@ -157,35 +157,34 @@ namespace AstraLab.Tests.Services.Datasets
 
                 dataset.CurrentVersionId = processedVersion.Id;
 
-                context.DatasetColumns.AddRange(new[]
+                var customerIdColumn = context.DatasetColumns.Add(new DatasetColumn
                 {
-                    new DatasetColumn
-                    {
-                        TenantId = 1,
-                        DatasetVersionId = processedVersion.Id,
-                        Name = "customer_id",
-                        DataType = "integer",
-                        IsDataTypeInferred = true,
-                        Ordinal = 1
-                    },
-                    new DatasetColumn
-                    {
-                        TenantId = 1,
-                        DatasetVersionId = processedVersion.Id,
-                        Name = "name",
-                        DataType = "string",
-                        IsDataTypeInferred = true,
-                        Ordinal = 2
-                    },
-                    new DatasetColumn
-                    {
-                        TenantId = 1,
-                        DatasetVersionId = processedVersion.Id,
-                        Name = "is_active",
-                        DataType = "boolean",
-                        IsDataTypeInferred = true,
-                        Ordinal = 3
-                    }
+                    TenantId = 1,
+                    DatasetVersionId = processedVersion.Id,
+                    Name = "customer_id",
+                    DataType = "integer",
+                    IsDataTypeInferred = true,
+                    Ordinal = 1
+                }).Entity;
+
+                context.DatasetColumns.Add(new DatasetColumn
+                {
+                    TenantId = 1,
+                    DatasetVersionId = processedVersion.Id,
+                    Name = "name",
+                    DataType = "string",
+                    IsDataTypeInferred = true,
+                    Ordinal = 2
+                });
+
+                context.DatasetColumns.Add(new DatasetColumn
+                {
+                    TenantId = 1,
+                    DatasetVersionId = processedVersion.Id,
+                    Name = "is_active",
+                    DataType = "boolean",
+                    IsDataTypeInferred = true,
+                    Ordinal = 3
                 });
 
                 context.DatasetFiles.Add(new DatasetFile
@@ -199,6 +198,29 @@ namespace AstraLab.Tests.Services.Datasets
                     SizeBytes = 256,
                     ChecksumSha256 = new string('a', 64),
                     CreationTime = new DateTime(2026, 3, 30, 8, 41, 0, DateTimeKind.Utc)
+                });
+
+                var datasetProfile = context.DatasetProfiles.Add(new DatasetProfile
+                {
+                    TenantId = 1,
+                    DatasetVersionId = processedVersion.Id,
+                    RowCount = 10,
+                    DuplicateRowCount = 1,
+                    DataHealthScore = 92.50m,
+                    SummaryJson = "{\"totalNullCount\":2,\"overallNullPercentage\":6.67,\"totalAnomalyCount\":1,\"overallAnomalyPercentage\":10.0}"
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.DatasetColumnProfiles.Add(new DatasetColumnProfile
+                {
+                    TenantId = 1,
+                    DatasetProfileId = datasetProfile.Id,
+                    DatasetColumnId = customerIdColumn.Id,
+                    InferredDataType = "integer",
+                    NullCount = 0,
+                    DistinctCount = 10,
+                    StatisticsJson = "{\"nullPercentage\":0,\"mean\":5.5,\"min\":1,\"max\":10,\"anomalyCount\":1,\"anomalyPercentage\":10.0,\"hasAnomalies\":true}"
                 });
 
                 context.SaveChanges();
@@ -219,6 +241,13 @@ namespace AstraLab.Tests.Services.Datasets
             output.SelectedVersion.VersionNumber.ShouldBe(2);
             output.SelectedVersion.ColumnCount.ShouldBe(3);
             output.SelectedVersion.SizeBytes.ShouldBe(256);
+            output.SelectedVersion.Profile.ShouldNotBeNull();
+            output.SelectedVersion.Profile.RowCount.ShouldBe(10);
+            output.SelectedVersion.Profile.DuplicateRowCount.ShouldBe(1);
+            output.SelectedVersion.Profile.DataHealthScore.ShouldBe(92.50m);
+            output.SelectedVersion.Profile.SummaryJson.ShouldContain("\"totalAnomalyCount\":1");
+            output.SelectedVersion.Profile.ColumnProfiles.Count.ShouldBe(1);
+            output.SelectedVersion.Profile.ColumnProfiles.Single().StatisticsJson.ShouldContain("\"hasAnomalies\":true");
             output.SelectedVersion.RawFile.ShouldNotBeNull();
             output.SelectedVersion.RawFile.OriginalFileName.ShouldBe("details.json");
             output.SelectedVersion.RawFile.ContentType.ShouldBe("application/json");

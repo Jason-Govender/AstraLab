@@ -25,6 +25,7 @@ namespace AstraLab.Services.Datasets
         private readonly IRepository<DatasetVersion, long> _datasetVersionRepository;
         private readonly IRepository<DatasetColumn, long> _datasetColumnRepository;
         private readonly IRepository<DatasetFile, long> _datasetFileRepository;
+        private readonly IRepository<DatasetProfile, long> _datasetProfileRepository;
         private readonly IDatasetOwnershipAccessChecker _datasetOwnershipAccessChecker;
 
         /// <summary>
@@ -35,12 +36,14 @@ namespace AstraLab.Services.Datasets
             IRepository<DatasetVersion, long> datasetVersionRepository,
             IRepository<DatasetColumn, long> datasetColumnRepository,
             IRepository<DatasetFile, long> datasetFileRepository,
+            IRepository<DatasetProfile, long> datasetProfileRepository,
             IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker)
         {
             _datasetRepository = datasetRepository;
             _datasetVersionRepository = datasetVersionRepository;
             _datasetColumnRepository = datasetColumnRepository;
             _datasetFileRepository = datasetFileRepository;
+            _datasetProfileRepository = datasetProfileRepository;
             _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
         }
 
@@ -115,6 +118,7 @@ namespace AstraLab.Services.Datasets
                     .ToListAsync();
 
             DatasetFile rawFile = null;
+            DatasetProfile datasetProfile = null;
             if (selectedVersion != null)
             {
                 rawFile = await _datasetFileRepository.GetAll()
@@ -123,13 +127,18 @@ namespace AstraLab.Services.Datasets
                         item.DatasetVersionId == selectedVersion.Id &&
                         item.DatasetVersion.Dataset.OwnerUserId == ownerUserId)
                     .FirstOrDefaultAsync();
+
+                datasetProfile = await _datasetProfileRepository.GetAll()
+                    .Include(item => item.ColumnProfiles)
+                    .Where(item => item.TenantId == tenantId && item.DatasetVersionId == selectedVersion.Id)
+                    .FirstOrDefaultAsync();
             }
 
             return new DatasetDetailsDto
             {
                 Dataset = ObjectMapper.Map<DatasetDto>(dataset),
                 Versions = versions.Select(MapToDatasetVersionSummaryDto).ToList(),
-                SelectedVersion = selectedVersion == null ? null : MapToDatasetVersionDetailsDto(selectedVersion, rawFile),
+                SelectedVersion = selectedVersion == null ? null : MapToDatasetVersionDetailsDto(selectedVersion, rawFile, datasetProfile),
                 Columns = ObjectMapper.Map<System.Collections.Generic.List<DatasetColumnDto>>(columns)
             };
         }
@@ -209,7 +218,7 @@ namespace AstraLab.Services.Datasets
         /// <summary>
         /// Maps the selected dataset version and optional raw file into the details shape.
         /// </summary>
-        private static DatasetVersionDetailsDto MapToDatasetVersionDetailsDto(DatasetVersion datasetVersion, DatasetFile rawFile)
+        private static DatasetVersionDetailsDto MapToDatasetVersionDetailsDto(DatasetVersion datasetVersion, DatasetFile rawFile, DatasetProfile datasetProfile)
         {
             return new DatasetVersionDetailsDto
             {
@@ -224,6 +233,33 @@ namespace AstraLab.Services.Datasets
                 SchemaJson = datasetVersion.SchemaJson,
                 SizeBytes = datasetVersion.SizeBytes,
                 CreationTime = datasetVersion.CreationTime,
+                Profile = datasetProfile == null
+                    ? null
+                    : new DatasetProfileDto
+                    {
+                        Id = datasetProfile.Id,
+                        DatasetVersionId = datasetProfile.DatasetVersionId,
+                        RowCount = datasetProfile.RowCount,
+                        DuplicateRowCount = datasetProfile.DuplicateRowCount,
+                        DataHealthScore = datasetProfile.DataHealthScore,
+                        SummaryJson = datasetProfile.SummaryJson,
+                        CreationTime = datasetProfile.CreationTime,
+                        ColumnProfiles = datasetProfile.ColumnProfiles
+                            .OrderBy(item => item.DatasetColumnId)
+                            .Select(item => new DatasetColumnProfileDto
+                            {
+                                Id = item.Id,
+                                DatasetProfileId = item.DatasetProfileId,
+                                DatasetColumnId = item.DatasetColumnId,
+                                InferredDataType = item.InferredDataType,
+                                NullCount = item.NullCount,
+                                NullPercentage = Profiling.DatasetProfileSerialization.ReadNullPercentage(item.StatisticsJson),
+                                DistinctCount = item.DistinctCount,
+                                StatisticsJson = item.StatisticsJson,
+                                CreationTime = item.CreationTime
+                            })
+                            .ToList(),
+                    },
                 RawFile = rawFile == null
                     ? null
                     : new DatasetFileSummaryDto

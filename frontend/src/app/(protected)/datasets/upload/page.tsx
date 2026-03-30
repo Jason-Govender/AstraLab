@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button, Card, Typography } from "antd";
 import { useRouter } from "next/navigation";
+import { DatasetUploadSuccessState } from "@/components/datasets/ingestion/datasetUploadSuccessState";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import { DatasetUploadForm } from "@/components/datasets/ingestion/datasetUploadForm";
 import {
@@ -18,12 +20,25 @@ const DatasetUploadContent = () => {
   const { styles } = useStyles();
   const router = useRouter();
   const { uploadRawDataset } = useDatasetIngestionActions();
-  const { isUploading, errorMessage } = useDatasetIngestionState();
+  const { isUploading, errorMessage, uploadResult } = useDatasetIngestionState();
+
+  useEffect(() => {
+    if (!uploadResult) {
+      return undefined;
+    }
+
+    const redirectTimeout = window.setTimeout(() => {
+      router.push(
+        `/datasets/${uploadResult.dataset.id}?versionId=${uploadResult.datasetVersionId}`,
+      );
+    }, 1200);
+
+    return () => window.clearTimeout(redirectTimeout);
+  }, [router, uploadResult]);
 
   const handleSubmit = async (values: UploadRawDatasetFormValues) => {
     try {
-      const result = await uploadRawDataset(values);
-      router.push(`/datasets/${result.dataset.id}?versionId=${result.datasetVersionId}`);
+      await uploadRawDataset(values);
     } catch {
       return;
     }
@@ -44,26 +59,34 @@ const DatasetUploadContent = () => {
       />
 
       <div className={styles.pageGrid}>
-        <DatasetUploadForm
-          isSubmitting={isUploading}
-          errorMessage={errorMessage}
-          onSubmit={handleSubmit}
-        />
+        <div className={styles.mainColumn}>
+          <DatasetUploadForm
+            isSubmitting={isUploading}
+            errorMessage={errorMessage}
+            onSubmit={handleSubmit}
+          />
 
-        <Card className={styles.helperCard}>
-          <Title level={4} className={styles.helperTitle}>
-            Ingestion Notes
-          </Title>
-          <Paragraph className={styles.helperText}>
-            The backend accepts CSV and JSON uploads only.
-          </Paragraph>
-          <Paragraph className={styles.helperText}>
-            Every successful upload creates a dataset, an initial raw version, stored raw file metadata, and extracted column/schema records.
-          </Paragraph>
-          <Paragraph className={styles.helperText}>
-            Validation errors come directly from the backend ingestion boundary so the UI stays aligned with the canonical rules.
-          </Paragraph>
-        </Card>
+          {uploadResult ? (
+            <DatasetUploadSuccessState uploadResult={uploadResult} />
+          ) : null}
+        </div>
+
+        <div className={styles.sideColumn}>
+          <Card className={styles.helperCard}>
+            <Title level={4} className={styles.helperTitle}>
+              Ingestion Notes
+            </Title>
+            <Paragraph className={styles.helperText}>
+              The backend accepts CSV and JSON uploads only.
+            </Paragraph>
+            <Paragraph className={styles.helperText}>
+              Every successful upload creates a dataset, an initial raw version, stored raw file metadata, extracted column/schema records, and a profiling snapshot.
+            </Paragraph>
+            <Paragraph className={styles.helperText}>
+              Validation and profiling outcomes come directly from the backend so the UI stays aligned with the canonical rules.
+            </Paragraph>
+          </Card>
+        </div>
       </div>
     </>
   );

@@ -78,5 +78,10 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the immutable raw file reference for this dataset version.
         /// </summary>
         public DatasetFile RawFile { get; set; }
+
+        /// <summary>
+        /// Gets or sets the current persisted profiling snapshot for this dataset version.
+        /// </summary>
+        public DatasetProfile Profile { get; set; }
     }
 }

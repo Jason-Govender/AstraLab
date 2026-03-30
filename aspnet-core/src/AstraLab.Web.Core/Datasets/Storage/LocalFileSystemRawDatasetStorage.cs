@@ -93,6 +93,23 @@ namespace AstraLab.Web.Core.Datasets.Storage
         }
 
         /// <summary>
+        /// Opens a previously stored raw dataset file for read access.
+        /// </summary>
+        public Task<Stream> OpenReadAsync(OpenReadRawDatasetFileRequest request)
+        {
+            ValidateOpenReadRequest(request);
+
+            var filePath = ResolveStoragePath(request.StorageKey);
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException("The requested raw dataset file could not be found.", filePath);
+            }
+
+            Stream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return Task.FromResult(fileStream);
+        }
+
+        /// <summary>
         /// Deletes a previously stored raw dataset file by logical reference.
         /// </summary>
         public Task DeleteAsync(DeleteRawDatasetFileRequest request)
@@ -162,6 +179,24 @@ namespace AstraLab.Web.Core.Datasets.Storage
         }
 
         private void ValidateDeleteRequest(DeleteRawDatasetFileRequest request)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (!string.Equals(request.StorageProvider, ProviderName, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("The specified storage provider is not supported by the local filesystem storage.", nameof(request));
+            }
+
+            if (request.StorageKey.IsNullOrWhiteSpace())
+            {
+                throw new ArgumentException("The storage key is required.", nameof(request));
+            }
+        }
+
+        private void ValidateOpenReadRequest(OpenReadRawDatasetFileRequest request)
         {
             if (request == null)
             {

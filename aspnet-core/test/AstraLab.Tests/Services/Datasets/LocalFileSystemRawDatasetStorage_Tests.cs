@@ -155,5 +155,51 @@ namespace AstraLab.Tests.Services.Datasets
                 }
             }
         }
+
+        [Fact]
+        public async Task OpenReadAsync_Should_Return_The_Previously_Stored_File_Content()
+        {
+            var rawRootPath = Path.Combine(Path.GetTempPath(), "AstraLab.Tests", "LocalStorage", Path.GetRandomFileName());
+            Directory.CreateDirectory(rawRootPath);
+
+            try
+            {
+                var storage = new LocalFileSystemRawDatasetStorage(new DatasetStorageOptions
+                {
+                    RawRootPath = rawRootPath
+                });
+
+                StoredRawDatasetFileResult storedFile;
+                using (var content = new MemoryStream(Encoding.UTF8.GetBytes("id,name\n1,Alice\n")))
+                {
+                    storedFile = await storage.StoreAsync(new StoreRawDatasetFileRequest
+                    {
+                        TenantId = 4,
+                        DatasetId = 8,
+                        DatasetVersionId = 15,
+                        OriginalFileName = "customers.csv",
+                        Content = content
+                    });
+                }
+
+                using (var contentStream = await storage.OpenReadAsync(new OpenReadRawDatasetFileRequest
+                {
+                    StorageProvider = storedFile.StorageProvider,
+                    StorageKey = storedFile.StorageKey
+                }))
+                using (var reader = new StreamReader(contentStream, Encoding.UTF8))
+                {
+                    var fileContent = await reader.ReadToEndAsync();
+                    fileContent.ShouldBe("id,name\n1,Alice\n");
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(rawRootPath))
+                {
+                    Directory.Delete(rawRootPath, true);
+                }
+            }
+        }
     }
 }
