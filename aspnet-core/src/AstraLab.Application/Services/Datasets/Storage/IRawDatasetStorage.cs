@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading.Tasks;
 
 namespace AstraLab.Services.Datasets.Storage
@@ -11,6 +12,11 @@ namespace AstraLab.Services.Datasets.Storage
         /// Stores a raw dataset file in immutable form.
         /// </summary>
         Task<StoredRawDatasetFileResult> StoreAsync(StoreRawDatasetFileRequest request);
+
+        /// <summary>
+        /// Opens a previously stored raw dataset file for reading.
+        /// </summary>
+        Task<Stream> OpenReadAsync(OpenReadRawDatasetFileRequest request);
 
         /// <summary>
         /// Deletes a previously stored raw dataset file by logical reference.

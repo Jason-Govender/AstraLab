@@ -7,6 +7,7 @@ using Abp.Domain.Uow;
 using Abp.ObjectMapping;
 using Abp.Runtime.Session;
 using Abp.UI;
+using Castle.MicroKernel.Registration;
 using NSubstitute;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Services.Datasets;
@@ -45,7 +46,11 @@ namespace AstraLab.Tests.Services.Datasets
             result.StorageProvider.ShouldBe("local-filesystem");
             result.StorageKey.ShouldContain("/raw/");
             result.ColumnCount.ShouldBe(2);
+            result.RowCount.ShouldBe(2);
+            result.DuplicateRowCount.ShouldBe(0);
+            result.DataHealthScore.ShouldBeGreaterThan(0m);
             result.Columns.Count.ShouldBe(2);
+            result.ColumnProfiles.Count.ShouldBe(2);
             result.Columns[0].Name.ShouldBe("id");
             result.Columns[1].Name.ShouldBe("name");
             result.SchemaJson.ShouldContain("\"format\":\"csv\"");
@@ -57,6 +62,8 @@ namespace AstraLab.Tests.Services.Datasets
                 context.DatasetVersions.Count().ShouldBe(1);
                 context.DatasetFiles.Count().ShouldBe(1);
                 context.DatasetColumns.Count().ShouldBe(2);
+                context.DatasetProfiles.Count().ShouldBe(1);
+                context.DatasetColumnProfiles.Count().ShouldBe(2);
 
                 var dataset = context.Datasets.Single();
                 var datasetVersion = context.DatasetVersions.Single();
@@ -64,12 +71,14 @@ namespace AstraLab.Tests.Services.Datasets
                 var datasetColumns = context.DatasetColumns.OrderBy(item => item.Ordinal).ToList();
 
                 dataset.CurrentVersionId.ShouldBe(datasetVersion.Id);
+                dataset.Status.ShouldBe(DatasetStatus.Ready);
                 datasetVersion.VersionType.ShouldBe(DatasetVersionType.Raw);
+                datasetVersion.RowCount.ShouldBe(2);
                 datasetVersion.ColumnCount.ShouldBe(2);
                 datasetVersion.SchemaJson.ShouldContain("\"columns\"");
                 datasetFile.DatasetVersionId.ShouldBe(datasetVersion.Id);
                 datasetColumns[0].Name.ShouldBe("id");
-                datasetColumns[0].DataType.ShouldBe("string");
+                datasetColumns[0].DataType.ShouldBe("integer");
                 datasetColumns[1].Name.ShouldBe("name");
 
                 await Task.CompletedTask;
@@ -90,8 +99,10 @@ namespace AstraLab.Tests.Services.Datasets
             result.Dataset.SourceFormat.ShouldBe(DatasetFormat.Json);
             result.StorageKey.ShouldEndWith(".json");
             result.ColumnCount.ShouldBe(3);
+            result.RowCount.ShouldBe(2);
             result.Columns.Select(item => item.Name).ShouldBe(new[] { "id", "name", "isActive" });
             result.Columns.Select(item => item.DataType).ShouldBe(new[] { "integer", "string", "boolean" });
+            result.ColumnProfiles.Count.ShouldBe(3);
             result.SchemaJson.ShouldContain("\"format\":\"json\"");
             result.SchemaJson.ShouldContain("\"rootKind\":\"array\"");
         }
@@ -230,6 +241,8 @@ namespace AstraLab.Tests.Services.Datasets
                 context.DatasetVersions.Count().ShouldBe(initialCounts.DatasetVersionCount);
                 context.DatasetFiles.Count().ShouldBe(initialCounts.DatasetFileCount);
                 context.DatasetColumns.Count().ShouldBe(initialCounts.DatasetColumnCount);
+                context.DatasetProfiles.Count().ShouldBe(0);
+                context.DatasetColumnProfiles.Count().ShouldBe(0);
 
                 await Task.CompletedTask;
             });
@@ -266,6 +279,8 @@ namespace AstraLab.Tests.Services.Datasets
                 context.DatasetVersions.Count().ShouldBe(initialCounts.DatasetVersionCount);
                 context.DatasetFiles.Count().ShouldBe(initialCounts.DatasetFileCount);
                 context.DatasetColumns.Count().ShouldBe(initialCounts.DatasetColumnCount);
+                context.DatasetProfiles.Count().ShouldBe(0);
+                context.DatasetColumnProfiles.Count().ShouldBe(0);
 
                 await Task.CompletedTask;
             });
@@ -303,6 +318,44 @@ namespace AstraLab.Tests.Services.Datasets
             }
         }
 
+        [Fact]
+        public async Task UploadRawAsync_Should_Delete_Stored_File_And_Not_Persist_Profiles_When_Profiling_Fails()
+        {
+            LocalIocManager.IocContainer.Register(
+                Component.For<IDatasetProfilingManager>()
+                    .Instance(new ThrowingDatasetProfilingManager(new IOException("Simulated profiling failure.")))
+                    .IsDefault()
+                    .LifestyleSingleton());
+
+            var datasetIngestionAppService = Resolve<IDatasetIngestionAppService>();
+            var datasetStorageOptions = Resolve<DatasetStorageOptions>();
+
+            await Should.ThrowAsync<IOException>(() =>
+                datasetIngestionAppService.UploadRawAsync(new UploadRawDatasetRequest
+                {
+                    Name = "Failing profiling upload",
+                    OriginalFileName = "failing.csv",
+                    ContentType = "text/csv",
+                    Content = Encoding.UTF8.GetBytes("id,name\n1,Alice\n")
+                }));
+
+            await UsingDbContextAsync(async context =>
+            {
+                context.Datasets.Count(item => !item.IsDeleted).ShouldBe(0);
+                context.DatasetVersions.Count(item => !item.IsDeleted).ShouldBe(0);
+                context.DatasetFiles.Count(item => !item.IsDeleted).ShouldBe(0);
+                context.DatasetColumns.Count(item => !item.IsDeleted).ShouldBe(0);
+                context.DatasetProfiles.Count(item => !item.IsDeleted).ShouldBe(0);
+                context.DatasetColumnProfiles.Count(item => !item.IsDeleted).ShouldBe(0);
+                await Task.CompletedTask;
+            });
+
+            if (Directory.Exists(datasetStorageOptions.RawRootPath))
+            {
+                Directory.GetFiles(datasetStorageOptions.RawRootPath, "*", SearchOption.AllDirectories).ShouldBeEmpty();
+            }
+        }
+
         private class SuccessfulMetadataExtractor : IRawDatasetMetadataExtractor
         {
             public ExtractedRawDatasetMetadata Extract(byte[] content, DatasetFormat datasetFormat)
@@ -325,18 +378,37 @@ namespace AstraLab.Tests.Services.Datasets
             }
         }
 
+        private class ThrowingDatasetProfilingManager : IDatasetProfilingManager
+        {
+            private readonly System.Exception _exception;
+
+            public ThrowingDatasetProfilingManager(System.Exception exception)
+            {
+                _exception = exception;
+            }
+
+            public Task<DatasetProfileDto> ProfileAsync(long datasetVersionId)
+            {
+                return Task.FromException<DatasetProfileDto>(_exception);
+            }
+        }
+
         private DatasetIngestionAppService CreateDatasetIngestionAppService(
             IRawDatasetMetadataExtractor rawDatasetMetadataExtractor,
-            IRepository<DatasetColumn, long> datasetColumnRepository)
+            IRepository<DatasetColumn, long> datasetColumnRepository,
+            IDatasetProfilingManager datasetProfilingManager = null)
         {
             return new DatasetIngestionAppService(
                 Resolve<IRepository<Dataset, long>>(),
                 Resolve<IRepository<DatasetVersion, long>>(),
                 datasetColumnRepository,
                 Resolve<IRepository<DatasetFile, long>>(),
+                Resolve<IRepository<DatasetProfile, long>>(),
+                Resolve<IRepository<DatasetColumnProfile, long>>(),
                 Resolve<IRawDatasetUploadValidator>(),
                 rawDatasetMetadataExtractor,
                 Resolve<IDatasetRawFileManager>(),
+                datasetProfilingManager ?? Resolve<IDatasetProfilingManager>(),
                 Resolve<IRawDatasetStorage>())
             {
                 AbpSession = Resolve<IAbpSession>(),
