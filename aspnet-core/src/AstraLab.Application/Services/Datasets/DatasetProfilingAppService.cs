@@ -95,6 +95,9 @@ namespace AstraLab.Services.Datasets
         /// </summary>
         public async Task<PagedResultDto<DatasetColumnInsightDto>> GetColumnsAsync(PagedDatasetColumnInsightRequestDto input)
         {
+            const string HasAnomaliesTrueToken = "\"hasAnomalies\":true";
+            const string HasAnomaliesFalseToken = "\"hasAnomalies\":false";
+
             var tenantId = GetRequiredTenantId();
             var ownerUserId = AbpSession.GetUserId();
 
@@ -136,25 +139,23 @@ namespace AstraLab.Services.Datasets
                 columnQuery = columnQuery.Where(item => item.InferredDataType == input.InferredDataType);
             }
 
-            var columnInsights = await columnQuery
-                .OrderBy(item => item.Ordinal)
-                .ToListAsync();
-
-            var mappedInsights = columnInsights
-                .Select(MapColumnInsightDto)
-                .ToList();
-
             if (input.HasAnomalies.HasValue)
             {
-                mappedInsights = mappedInsights
-                    .Where(item => item.HasAnomalies == input.HasAnomalies.Value)
-                    .ToList();
+                var anomalyToken = input.HasAnomalies.Value
+                    ? HasAnomaliesTrueToken
+                    : HasAnomaliesFalseToken;
+
+                columnQuery = columnQuery.Where(item => item.StatisticsJson != null && item.StatisticsJson.Contains(anomalyToken));
             }
 
-            var totalCount = mappedInsights.Count;
-            var items = mappedInsights
-                .AsQueryable()
+            var totalCount = await columnQuery.CountAsync();
+            var columnInsights = await columnQuery
+                .OrderBy(item => item.Ordinal)
                 .PageBy(input)
+                .ToListAsync();
+
+            var items = columnInsights
+                .Select(MapColumnInsightDto)
                 .ToList();
 
             return new PagedResultDto<DatasetColumnInsightDto>(totalCount, items);

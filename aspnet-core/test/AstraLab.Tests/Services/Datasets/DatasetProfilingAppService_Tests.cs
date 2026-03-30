@@ -102,14 +102,14 @@ namespace AstraLab.Tests.Services.Datasets
             var output = await _datasetProfilingAppService.GetColumnsAsync(new PagedDatasetColumnInsightRequestDto
             {
                 DatasetVersionId = upload.DatasetVersionId,
-                MaxResultCount = 20,
+                MaxResultCount = 2,
                 SkipCount = 0
             });
 
             output.TotalCount.ShouldBe(3);
-            output.Items.Count.ShouldBe(3);
-            output.Items.Select(item => item.Ordinal).ShouldBe(new[] { 1, 2, 3 });
-            output.Items.Select(item => item.Name).ShouldBe(new[] { "id", "amount", "name" });
+            output.Items.Count.ShouldBe(2);
+            output.Items.Select(item => item.Ordinal).ShouldBe(new[] { 1, 2 });
+            output.Items.Select(item => item.Name).ShouldBe(new[] { "id", "amount" });
 
             var amountColumn = output.Items.Single(item => item.Name == "amount");
             amountColumn.InferredDataType.ShouldBe("decimal");
@@ -155,6 +155,20 @@ namespace AstraLab.Tests.Services.Datasets
             typeOutput.TotalCount.ShouldBe(1);
             typeOutput.Items.Single().Name.ShouldBe("flag");
             typeOutput.Items.Single().InferredDataType.ShouldBe("boolean");
+
+            var combinedOutput = await _datasetProfilingAppService.GetColumnsAsync(new PagedDatasetColumnInsightRequestDto
+            {
+                DatasetVersionId = upload.DatasetVersionId,
+                HasAnomalies = true,
+                InferredDataType = "integer",
+                MaxResultCount = 20,
+                SkipCount = 0
+            });
+
+            combinedOutput.TotalCount.ShouldBe(1);
+            combinedOutput.Items.Count.ShouldBe(1);
+            combinedOutput.Items.Single().Name.ShouldBe("amount");
+            combinedOutput.Items.Single().HasAnomalies.ShouldBeTrue();
         }
 
         [Fact]
