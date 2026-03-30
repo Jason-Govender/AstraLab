@@ -26,6 +26,11 @@ namespace AstraLab.EntityFrameworkCore
         /// </summary>
         public DbSet<DatasetColumn> DatasetColumns { get; set; }
 
+        /// <summary>
+        /// Gets or sets the persisted raw file references for dataset versions.
+        /// </summary>
+        public DbSet<DatasetFile> DatasetFiles { get; set; }
+
         public AstraLabDbContext(DbContextOptions<AstraLabDbContext> options)
             : base(options)
         {
@@ -106,6 +111,41 @@ namespace AstraLab.EntityFrameworkCore
 
                 entity.HasIndex(datasetColumn => new { datasetColumn.TenantId, datasetColumn.DatasetVersionId });
                 entity.HasIndex(datasetColumn => new { datasetColumn.DatasetVersionId, datasetColumn.Name });
+            });
+
+            modelBuilder.Entity<DatasetFile>(entity =>
+            {
+                entity.ToTable("DatasetFiles");
+
+                entity.Property(datasetFile => datasetFile.StorageProvider)
+                    .IsRequired()
+                    .HasMaxLength(DatasetFile.MaxStorageProviderLength);
+
+                entity.Property(datasetFile => datasetFile.StorageKey)
+                    .IsRequired()
+                    .HasMaxLength(DatasetFile.MaxStorageKeyLength);
+
+                entity.Property(datasetFile => datasetFile.OriginalFileName)
+                    .IsRequired()
+                    .HasMaxLength(DatasetFile.MaxOriginalFileNameLength);
+
+                entity.Property(datasetFile => datasetFile.ContentType)
+                    .HasMaxLength(DatasetFile.MaxContentTypeLength);
+
+                entity.Property(datasetFile => datasetFile.ChecksumSha256)
+                    .IsRequired()
+                    .HasMaxLength(DatasetFile.ChecksumSha256Length);
+
+                entity.HasOne(datasetFile => datasetFile.DatasetVersion)
+                    .WithOne(datasetVersion => datasetVersion.RawFile)
+                    .HasForeignKey<DatasetFile>(datasetFile => datasetFile.DatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(datasetFile => datasetFile.DatasetVersionId)
+                    .IsUnique();
+
+                entity.HasIndex(datasetFile => new { datasetFile.StorageProvider, datasetFile.StorageKey })
+                    .IsUnique();
             });
         }
     }

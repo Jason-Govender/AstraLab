@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Castle.MicroKernel.Registration;
 using NSubstitute;
 using Abp.AutoMapper;
@@ -10,7 +11,9 @@ using Abp.TestBase;
 using Abp.Zero.Configuration;
 using Abp.Zero.EntityFrameworkCore;
 using AstraLab.EntityFrameworkCore;
+using AstraLab.Services.Datasets.Storage;
 using AstraLab.Tests.DependencyInjection;
+using AstraLab.Web.Core.Datasets.Storage;
 
 namespace AstraLab.Tests
 {
@@ -43,6 +46,7 @@ namespace AstraLab.Tests
             RegisterFakeService<AbpZeroDbMigrator<AstraLabDbContext>>();
 
             Configuration.ReplaceService<IEmailSender, NullEmailSender>(DependencyLifeStyle.Transient);
+            RegisterDatasetStorage();
         }
 
         public override void Initialize()
@@ -57,6 +61,22 @@ namespace AstraLab.Tests
                     .UsingFactoryMethod(() => Substitute.For<TService>())
                     .LifestyleSingleton()
             );
+        }
+
+        private void RegisterDatasetStorage()
+        {
+            var rawRootPath = Path.Combine(Path.GetTempPath(), "AstraLab.Tests", "RawStorage", Guid.NewGuid().ToString("N"));
+
+            IocManager.IocContainer.Register(
+                Component.For<DatasetStorageOptions>()
+                    .Instance(new DatasetStorageOptions
+                    {
+                        RawRootPath = rawRootPath
+                    })
+                    .LifestyleSingleton(),
+                Component.For<IRawDatasetStorage>()
+                    .ImplementedBy<LocalFileSystemRawDatasetStorage>()
+                    .LifestyleTransient());
         }
     }
 }
