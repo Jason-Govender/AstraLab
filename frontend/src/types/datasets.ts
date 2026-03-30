@@ -46,6 +46,77 @@ export interface DatasetColumn {
   creationTime: string;
 }
 
+export interface DatasetProfileSummaryPayload {
+  totalNullCount: number;
+  overallNullPercentage: number;
+  totalAnomalyCount: number;
+  overallAnomalyPercentage: number;
+}
+
+export interface DatasetColumnStatistics {
+  nullPercentage: number;
+  mean?: number | null;
+  min?: number | null;
+  max?: number | null;
+  anomalyCount: number;
+  anomalyPercentage: number;
+  hasAnomalies: boolean;
+}
+
+export interface DatasetColumnProfile {
+  id: number;
+  datasetProfileId: number;
+  datasetColumnId: number;
+  inferredDataType?: string | null;
+  nullCount: number;
+  nullPercentage: number;
+  distinctCount?: number | null;
+  statisticsJson?: string | null;
+  creationTime: string;
+}
+
+export interface DatasetProfile {
+  id: number;
+  datasetVersionId: number;
+  rowCount: number;
+  duplicateRowCount: number;
+  dataHealthScore: number;
+  summaryJson?: string | null;
+  columnProfiles: DatasetColumnProfile[];
+  creationTime: string;
+}
+
+export interface DatasetProfileSummary {
+  datasetVersionId: number;
+  profileId: number;
+  rowCount: number;
+  duplicateRowCount: number;
+  dataHealthScore: number;
+  totalNullCount: number;
+  overallNullPercentage: number;
+  totalAnomalyCount: number;
+  overallAnomalyPercentage: number;
+  creationTime: string;
+}
+
+export interface DatasetColumnInsight {
+  datasetColumnId: number;
+  columnProfileId: number;
+  name: string;
+  ordinal: number;
+  inferredDataType?: string | null;
+  nullCount: number;
+  nullPercentage: number;
+  distinctCount?: number | null;
+  mean?: number | null;
+  min?: number | null;
+  max?: number | null;
+  anomalyCount: number;
+  anomalyPercentage: number;
+  hasAnomalies: boolean;
+  creationTime: string;
+}
+
 export interface DatasetFileSummary {
   originalFileName: string;
   contentType?: string | null;
@@ -77,6 +148,7 @@ export interface DatasetVersionSummary {
 }
 
 export interface DatasetVersionDetails extends DatasetVersion {
+  profile?: DatasetProfile | null;
   rawFile?: DatasetFileSummary | null;
 }
 
@@ -123,6 +195,10 @@ export interface UploadedRawDatasetResult {
   columnCount: number;
   schemaJson: string;
   columns: DatasetColumn[];
+  rowCount: number;
+  duplicateRowCount: number;
+  dataHealthScore: number;
+  columnProfiles: DatasetColumnProfile[];
 }
 
 export interface DatasetCatalogFilters {
@@ -143,4 +219,12 @@ export interface DatasetSchema {
   format: string;
   rootKind: string;
   columns: DatasetSchemaColumn[];
+}
+
+export interface DatasetProfileColumnsRequest {
+  datasetVersionId: number;
+  page: number;
+  pageSize: number;
+  hasAnomalies?: boolean;
+  inferredDataType?: string;
 }

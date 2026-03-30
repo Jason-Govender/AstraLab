@@ -1,9 +1,16 @@
 import {
+  DatasetColumn,
+  DatasetColumnInsight,
+  DatasetColumnProfile,
+  DatasetColumnStatistics,
   DatasetFormat,
+  DatasetProfile,
+  DatasetProfileSummaryPayload,
   DatasetSchema,
   DatasetStatus,
   DatasetVersionStatus,
   DatasetVersionType,
+  UploadedRawDatasetResult,
 } from "@/types/datasets";
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
@@ -148,6 +155,46 @@ export const formatRelativeTime = (value?: string | null): string => {
   return relativeTimeFormatter.format(diffInDays, "day");
 };
 
+export const formatNumber = (
+  value?: number | null,
+  maximumFractionDigits = 2,
+): string => {
+  if (value === null || value === undefined) {
+    return "Unavailable";
+  }
+
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits,
+  }).format(value);
+};
+
+export const formatPercentage = (
+  value?: number | null,
+  maximumFractionDigits = 1,
+): string => {
+  if (value === null || value === undefined) {
+    return "Unavailable";
+  }
+
+  return `${formatNumber(value, maximumFractionDigits)}%`;
+};
+
+export const getDataHealthScoreTone = (value?: number | null) => {
+  if (value === null || value === undefined) {
+    return "default";
+  }
+
+  if (value >= 85) {
+    return "success";
+  }
+
+  if (value >= 60) {
+    return "processing";
+  }
+
+  return "error";
+};
+
 export const parseDatasetSchema = (
   schemaJson?: string | null,
 ): DatasetSchema | null => {
@@ -160,4 +207,120 @@ export const parseDatasetSchema = (
   } catch {
     return null;
   }
+};
+
+export const parseDatasetProfileSummary = (
+  summaryJson?: string | null,
+): DatasetProfileSummaryPayload | null => {
+  if (!summaryJson) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(summaryJson) as DatasetProfileSummaryPayload;
+  } catch {
+    return null;
+  }
+};
+
+export const parseDatasetColumnStatistics = (
+  statisticsJson?: string | null,
+): DatasetColumnStatistics | null => {
+  if (!statisticsJson) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(statisticsJson) as DatasetColumnStatistics;
+  } catch {
+    return null;
+  }
+};
+
+export interface DatasetProfileOverview {
+  rowCount?: number | null;
+  duplicateRowCount?: number | null;
+  dataHealthScore?: number | null;
+  totalNullCount?: number | null;
+  overallNullPercentage?: number | null;
+  totalAnomalyCount?: number | null;
+  overallAnomalyPercentage?: number | null;
+  creationTime?: string | null;
+  profiledColumnCount?: number | null;
+}
+
+export const getDatasetProfileOverview = (
+  profile?: DatasetProfile | null,
+): DatasetProfileOverview | null => {
+  if (!profile) {
+    return null;
+  }
+
+  const summary = parseDatasetProfileSummary(profile.summaryJson);
+
+  return {
+    rowCount: profile.rowCount,
+    duplicateRowCount: profile.duplicateRowCount,
+    dataHealthScore: profile.dataHealthScore,
+    totalNullCount: summary?.totalNullCount,
+    overallNullPercentage: summary?.overallNullPercentage,
+    totalAnomalyCount: summary?.totalAnomalyCount,
+    overallAnomalyPercentage: summary?.overallAnomalyPercentage,
+    creationTime: profile.creationTime,
+    profiledColumnCount: profile.columnProfiles.length,
+  };
+};
+
+export const getUploadProfileOverview = (
+  uploadResult?: UploadedRawDatasetResult | null,
+): DatasetProfileOverview | null => {
+  if (!uploadResult) {
+    return null;
+  }
+
+  return {
+    rowCount: uploadResult.rowCount,
+    duplicateRowCount: uploadResult.duplicateRowCount,
+    dataHealthScore: uploadResult.dataHealthScore,
+    profiledColumnCount: uploadResult.columnProfiles.length || uploadResult.columnCount,
+  };
+};
+
+export const buildDatasetColumnInsights = (
+  columns: DatasetColumn[],
+  columnProfiles: DatasetColumnProfile[],
+): DatasetColumnInsight[] => {
+  const profileMap = new Map(
+    columnProfiles.map((columnProfile) => [
+      columnProfile.datasetColumnId,
+      columnProfile,
+    ]),
+  );
+
+  return columns
+    .map((column) => {
+      const columnProfile = profileMap.get(column.id);
+      const statistics = parseDatasetColumnStatistics(columnProfile?.statisticsJson);
+
+      return {
+        datasetColumnId: column.id,
+        columnProfileId: columnProfile?.id ?? 0,
+        name: column.name,
+        ordinal: column.ordinal,
+        inferredDataType: columnProfile?.inferredDataType || column.dataType,
+        nullCount: columnProfile?.nullCount ?? column.nullCount ?? 0,
+        nullPercentage:
+          columnProfile?.nullPercentage ?? statistics?.nullPercentage ?? 0,
+        distinctCount:
+          columnProfile?.distinctCount ?? column.distinctCount ?? undefined,
+        mean: statistics?.mean,
+        min: statistics?.min,
+        max: statistics?.max,
+        anomalyCount: statistics?.anomalyCount ?? 0,
+        anomalyPercentage: statistics?.anomalyPercentage ?? 0,
+        hasAnomalies: statistics?.hasAnomalies ?? false,
+        creationTime: columnProfile?.creationTime ?? column.creationTime,
+      };
+    })
+    .sort((leftColumn, rightColumn) => leftColumn.ordinal - rightColumn.ordinal);
 };

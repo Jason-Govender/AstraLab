@@ -2,12 +2,19 @@
 
 import { useContext, useReducer } from "react";
 import type { PropsWithChildren } from "react";
-import { getDatasetDetails as getDatasetDetailsRequest } from "@/services/datasetService";
+import {
+  getDatasetDetails as getDatasetDetailsRequest,
+  getDatasetProfileColumns as getDatasetProfileColumnsRequest,
+} from "@/services/datasetService";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 import {
+  clearProfileColumns as clearProfileColumnsAction,
   getDetailsError,
   getDetailsPending,
   getDetailsSuccess,
+  getProfileColumnsError,
+  getProfileColumnsPending,
+  getProfileColumnsSuccess,
   setSelectedVersionId as setSelectedVersionIdAction,
 } from "./actions";
 import {
@@ -47,6 +54,31 @@ export const DatasetDetailsProvider = ({ children }: PropsWithChildren) => {
     dispatch(setSelectedVersionIdAction(selectedVersionId));
   };
 
+  const getProfileColumns = async (
+    request: Parameters<typeof getDatasetProfileColumnsRequest>[0],
+  ) => {
+    dispatch(getProfileColumnsPending(request));
+
+    try {
+      const result = await getDatasetProfileColumnsRequest(request);
+      dispatch(getProfileColumnsSuccess({ request, result }));
+    } catch (error) {
+      dispatch(
+        getProfileColumnsError({
+          request,
+          errorMessage: getApiErrorMessage(
+            error,
+            "Unable to load dataset profiling insights right now.",
+          ),
+        }),
+      );
+    }
+  };
+
+  const clearProfileColumns = () => {
+    dispatch(clearProfileColumnsAction());
+  };
+
   const refreshDetails = async () => {
     if (!state.currentDatasetId) {
       return;
@@ -55,13 +87,24 @@ export const DatasetDetailsProvider = ({ children }: PropsWithChildren) => {
     await getDatasetDetails(state.currentDatasetId, state.selectedVersionId);
   };
 
+  const refreshProfileColumns = async () => {
+    if (!state.lastProfileColumnsRequest) {
+      return;
+    }
+
+    await getProfileColumns(state.lastProfileColumnsRequest);
+  };
+
   return (
     <DatasetDetailsStateContext.Provider value={state}>
       <DatasetDetailsActionContext.Provider
         value={{
           getDatasetDetails,
+          getProfileColumns,
           setSelectedVersionId,
+          clearProfileColumns,
           refreshDetails,
+          refreshProfileColumns,
         }}
       >
         {children}

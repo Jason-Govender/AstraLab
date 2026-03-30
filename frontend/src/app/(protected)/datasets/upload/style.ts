@@ -13,6 +13,18 @@ export const useStyles = createStyles(({ token, css }) => ({
     }
   `,
 
+  mainColumn: css`
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  `,
+
+  sideColumn: css`
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  `,
+
   actionGroup: css`
     display: flex;
     align-items: center;
