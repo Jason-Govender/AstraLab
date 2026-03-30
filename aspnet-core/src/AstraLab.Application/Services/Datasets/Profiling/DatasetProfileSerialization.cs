@@ -56,17 +56,50 @@ namespace AstraLab.Services.Datasets.Profiling
         }
 
         /// <summary>
+        /// Reads the dataset-level summary values from a persisted profile summary payload.
+        /// </summary>
+        public static (long TotalNullCount, decimal OverallNullPercentage, long TotalAnomalyCount, decimal OverallAnomalyPercentage) ReadSummary(string summaryJson)
+        {
+            if (string.IsNullOrWhiteSpace(summaryJson))
+            {
+                return (0L, 0m, 0L, 0m);
+            }
+
+            var payload = JsonSerializer.Deserialize<DatasetProfileSummaryPayload>(summaryJson, SerializerOptions);
+            return (
+                payload?.TotalNullCount ?? 0L,
+                payload?.OverallNullPercentage ?? 0m,
+                payload?.TotalAnomalyCount ?? 0L,
+                payload?.OverallAnomalyPercentage ?? 0m);
+        }
+
+        /// <summary>
+        /// Reads the column-level statistics values from a persisted profile statistics payload.
+        /// </summary>
+        public static (decimal NullPercentage, decimal? Mean, decimal? Min, decimal? Max, long AnomalyCount, decimal AnomalyPercentage, bool HasAnomalies) ReadColumnStatistics(string statisticsJson)
+        {
+            if (string.IsNullOrWhiteSpace(statisticsJson))
+            {
+                return (0m, null, null, null, 0L, 0m, false);
+            }
+
+            var payload = JsonSerializer.Deserialize<DatasetColumnStatisticsPayload>(statisticsJson, SerializerOptions);
+            return (
+                payload?.NullPercentage ?? 0m,
+                payload?.Mean,
+                payload?.Min,
+                payload?.Max,
+                payload?.AnomalyCount ?? 0L,
+                payload?.AnomalyPercentage ?? 0m,
+                payload?.HasAnomalies ?? false);
+        }
+
+        /// <summary>
         /// Reads the null percentage from a persisted column statistics payload.
         /// </summary>
         public static decimal ReadNullPercentage(string statisticsJson)
         {
-            if (string.IsNullOrWhiteSpace(statisticsJson))
-            {
-                return 0m;
-            }
-
-            var payload = JsonSerializer.Deserialize<DatasetColumnStatisticsPayload>(statisticsJson, SerializerOptions);
-            return payload?.NullPercentage ?? 0m;
+            return ReadColumnStatistics(statisticsJson).NullPercentage;
         }
 
         private class DatasetProfileSummaryPayload

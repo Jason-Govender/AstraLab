@@ -11,6 +11,16 @@ namespace AstraLab.Services.Datasets
     public interface IDatasetProfilingAppService : IApplicationService
     {
         /// <summary>
+        /// Gets the current persisted profiling summary for the specified dataset version.
+        /// </summary>
+        Task<DatasetProfileSummaryDto> GetAsync(EntityDto<long> input);
+
+        /// <summary>
+        /// Gets paged column insights for the current persisted profile of the specified dataset version.
+        /// </summary>
+        Task<PagedResultDto<DatasetColumnInsightDto>> GetColumnsAsync(PagedDatasetColumnInsightRequestDto input);
+
+        /// <summary>
         /// Profiles the specified dataset version and returns the current snapshot.
         /// </summary>
         Task<DatasetProfileDto> ProfileAsync(EntityDto<long> input);
