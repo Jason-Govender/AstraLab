@@ -161,11 +161,31 @@ export const buildCorrelationHeatmapData = (
     return [];
   }
 
-  return correlation.pairs.map((pair) => ({
-    xColumnName: pair.xColumnName,
-    yColumnName: pair.yColumnName,
-    coefficient: pair.coefficient ?? 0,
-  }));
+  return correlation.columns.flatMap((xColumn) =>
+    correlation.columns.map((yColumn) => {
+      if (xColumn.datasetColumnId === yColumn.datasetColumnId) {
+        return {
+          xColumnName: xColumn.name,
+          yColumnName: yColumn.name,
+          coefficient: 1,
+        };
+      }
+
+      const matchingPair = correlation.pairs.find(
+        (pair) =>
+          (pair.xDatasetColumnId === xColumn.datasetColumnId &&
+            pair.yDatasetColumnId === yColumn.datasetColumnId) ||
+          (pair.xDatasetColumnId === yColumn.datasetColumnId &&
+            pair.yDatasetColumnId === xColumn.datasetColumnId),
+      );
+
+      return {
+        xColumnName: xColumn.name,
+        yColumnName: yColumn.name,
+        coefficient: matchingPair?.coefficient ?? 0,
+      };
+    }),
+  );
 };
 
 export const getCorrelationCoefficientTone = (
