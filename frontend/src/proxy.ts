@@ -61,7 +61,6 @@ export const config = {
     "/register",
     "/dashboard/:path*",
     "/datasets/:path*",
-    "/analysis/:path*",
     "/ai-assistant/:path*",
     "/ml-workspace/:path*",
     "/reports/:path*",

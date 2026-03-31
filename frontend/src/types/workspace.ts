@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 export type WorkspaceIconKey =
   | "dashboard"
   | "datasets"
-  | "analysis"
   | "assistant"
   | "mlWorkspace"
   | "reports"

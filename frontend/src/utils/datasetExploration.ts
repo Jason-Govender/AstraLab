@@ -47,6 +47,11 @@ export const getCategoricalExplorationColumns = (
 ): DatasetExplorationColumn[] =>
   columns.filter((column) => column.isCategorical);
 
+export const getBarChartEligibleColumns = (
+  columns: DatasetExplorationColumn[],
+): DatasetExplorationColumn[] =>
+  columns.filter((column) => column.isCategorical && !column.isTemporal);
+
 export const getDistributionEligibleColumns = (
   columns: DatasetExplorationColumn[],
 ): DatasetExplorationColumn[] =>
@@ -73,7 +78,7 @@ export const buildDefaultBarChartRequest = (
   datasetVersionId: number,
   columns: DatasetExplorationColumn[],
 ): DatasetBarChartRequest | undefined => {
-  const firstCategoricalColumn = getCategoricalExplorationColumns(columns)[0];
+  const firstCategoricalColumn = getBarChartEligibleColumns(columns)[0];
 
   if (!firstCategoricalColumn) {
     return undefined;
@@ -190,7 +195,9 @@ export const getCorrelationCoefficientTone = (
 export const getCategoryChartData = (
   categories: BarChartCategory[],
 ): Array<{ label: string; count: number }> =>
-  categories.map((category) => ({
-    label: category.label,
-    count: category.count,
-  }));
+  [...categories]
+    .sort((leftCategory, rightCategory) => rightCategory.count - leftCategory.count)
+    .map((category) => ({
+      label: category.label,
+      count: category.count,
+    }));
