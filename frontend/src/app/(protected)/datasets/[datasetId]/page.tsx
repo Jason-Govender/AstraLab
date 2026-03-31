@@ -13,6 +13,7 @@ import { DatasetColumnsTable } from "@/components/datasets/shared/datasetColumns
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
 import { DatasetSchemaPreview } from "@/components/datasets/shared/datasetSchemaPreview";
 import { DatasetTransformationHistoryCard } from "@/components/datasets/transformations/datasetTransformationHistoryCard";
+import { DatasetExplorationLauncherButton } from "@/components/datasets/exploration/datasetExplorationLauncherButton";
 import { DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE } from "@/constants/datasets";
 import {
   DatasetDetailsProvider,
@@ -201,6 +202,11 @@ const DatasetDetailsContent = () => {
             <Button size="large" onClick={() => router.push("/datasets")}>
               Back to datasets
             </Button>
+            <DatasetExplorationLauncherButton
+              datasetId={datasetId}
+              versionId={effectiveSelectedVersionId}
+              size="large"
+            />
             <Button
               type="primary"
               size="large"
