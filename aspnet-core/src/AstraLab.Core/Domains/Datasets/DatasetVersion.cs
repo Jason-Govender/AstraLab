@@ -83,5 +83,15 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the current persisted profiling snapshot for this dataset version.
         /// </summary>
         public DatasetProfile Profile { get; set; }
+
+        /// <summary>
+        /// Gets or sets the outgoing transformation records that were executed from this dataset version.
+        /// </summary>
+        public ICollection<DatasetTransformation> OutgoingTransformations { get; set; } = new List<DatasetTransformation>();
+
+        /// <summary>
+        /// Gets or sets the transformation record that produced this dataset version when the version is processed output.
+        /// </summary>
+        public DatasetTransformation ProducedByTransformation { get; set; }
     }
 }
