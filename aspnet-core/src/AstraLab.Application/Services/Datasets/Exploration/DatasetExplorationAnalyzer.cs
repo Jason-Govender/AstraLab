@@ -30,13 +30,26 @@ namespace AstraLab.Services.Datasets.Exploration
 
             var skipCount = Math.Max(0, input.SkipCount);
             var maxResultCount = input.MaxResultCount > 0 ? input.MaxResultCount : DefaultPageSize;
-            var items = dataset.Rows
+            var rowQuery = dataset.Rows
+                .Select((row, index) => new RowProjection
+                {
+                    OriginalRowNumber = index + 1,
+                    Values = row.Values
+                });
+
+            if (input.SortDatasetColumnId.HasValue)
+            {
+                var sortColumn = ResolveColumn(columns, input.SortDatasetColumnId.Value);
+                rowQuery = ApplyRowSorting(rowQuery, sortColumn, input.SortDirection);
+            }
+
+            var items = rowQuery
                 .Skip(skipCount)
                 .Take(maxResultCount)
-                .Select((row, index) => new DatasetRowDto
+                .Select(item => new DatasetRowDto
                 {
-                    RowNumber = skipCount + index + 1,
-                    Values = row.Values.ToList()
+                    RowNumber = item.OriginalRowNumber,
+                    Values = item.Values.ToList()
                 })
                 .ToList();
 
@@ -321,7 +334,12 @@ namespace AstraLab.Services.Datasets.Exploration
 
         private static DatasetColumn ResolveColumn(LoadedExplorationDataset dataset, long datasetColumnId)
         {
-            var column = dataset.Columns.SingleOrDefault(item => item.Id == datasetColumnId);
+            return ResolveColumn(dataset.Columns, datasetColumnId);
+        }
+
+        private static DatasetColumn ResolveColumn(IReadOnlyList<DatasetColumn> columns, long datasetColumnId)
+        {
+            var column = columns.SingleOrDefault(item => item.Id == datasetColumnId);
             if (column == null)
             {
                 throw new UserFriendlyException("The requested column does not belong to the selected dataset version.");
@@ -508,6 +526,59 @@ namespace AstraLab.Services.Datasets.Exploration
             };
         }
 
+        private static IEnumerable<RowProjection> ApplyRowSorting(IEnumerable<RowProjection> rows, DatasetColumn sortColumn, DatasetRowSortDirection sortDirection)
+        {
+            var columnIndex = sortColumn.Ordinal - 1;
+            var normalizedType = NormalizeDataType(sortColumn);
+            var nonMissingRows = rows.Where(item => !DatasetTransformationValueUtility.IsMissing(item.Values[columnIndex]));
+            var missingRows = rows.Where(item => DatasetTransformationValueUtility.IsMissing(item.Values[columnIndex]))
+                .OrderBy(item => item.OriginalRowNumber);
+
+            IEnumerable<RowProjection> orderedRows;
+            switch (normalizedType)
+            {
+                case DatasetTransformationValueUtility.IntegerDataType:
+                case DatasetTransformationValueUtility.DecimalDataType:
+                    orderedRows = sortDirection == DatasetRowSortDirection.Descending
+                        ? nonMissingRows
+                            .OrderByDescending(item => DatasetTransformationValueUtility.ParseDecimal(item.Values[columnIndex], sortColumn.Name))
+                            .ThenBy(item => item.OriginalRowNumber)
+                        : nonMissingRows
+                            .OrderBy(item => DatasetTransformationValueUtility.ParseDecimal(item.Values[columnIndex], sortColumn.Name))
+                            .ThenBy(item => item.OriginalRowNumber);
+                    break;
+                case DatasetTransformationValueUtility.DateTimeDataType:
+                    orderedRows = sortDirection == DatasetRowSortDirection.Descending
+                        ? nonMissingRows
+                            .OrderByDescending(item => DatasetTransformationValueUtility.ParseDateTime(item.Values[columnIndex], sortColumn.Name))
+                            .ThenBy(item => item.OriginalRowNumber)
+                        : nonMissingRows
+                            .OrderBy(item => DatasetTransformationValueUtility.ParseDateTime(item.Values[columnIndex], sortColumn.Name))
+                            .ThenBy(item => item.OriginalRowNumber);
+                    break;
+                case DatasetTransformationValueUtility.BooleanDataType:
+                    orderedRows = sortDirection == DatasetRowSortDirection.Descending
+                        ? nonMissingRows
+                            .OrderByDescending(item => DatasetTransformationValueUtility.ParseBoolean(item.Values[columnIndex], sortColumn.Name))
+                            .ThenBy(item => item.OriginalRowNumber)
+                        : nonMissingRows
+                            .OrderBy(item => DatasetTransformationValueUtility.ParseBoolean(item.Values[columnIndex], sortColumn.Name))
+                            .ThenBy(item => item.OriginalRowNumber);
+                    break;
+                default:
+                    orderedRows = sortDirection == DatasetRowSortDirection.Descending
+                        ? nonMissingRows
+                            .OrderByDescending(item => item.Values[columnIndex], StringComparer.Ordinal)
+                            .ThenBy(item => item.OriginalRowNumber)
+                        : nonMissingRows
+                            .OrderBy(item => item.Values[columnIndex], StringComparer.Ordinal)
+                            .ThenBy(item => item.OriginalRowNumber);
+                    break;
+            }
+
+            return orderedRows.Concat(missingRows);
+        }
+
         /// <summary>
         /// Represents derived categorical frequency results.
         /// </summary>
@@ -520,6 +591,16 @@ namespace AstraLab.Services.Datasets.Exploration
             public long TotalDistinctCount { get; set; }
 
             public List<BarChartCategoryDto> Items { get; set; } = new List<BarChartCategoryDto>();
+        }
+
+        /// <summary>
+        /// Represents a table row paired with its original dataset row position.
+        /// </summary>
+        private class RowProjection
+        {
+            public int OriginalRowNumber { get; set; }
+
+            public IReadOnlyList<string> Values { get; set; }
         }
     }
 }

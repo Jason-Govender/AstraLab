@@ -52,6 +52,124 @@ namespace AstraLab.Tests.Services.Datasets
         }
 
         [Fact]
+        public async Task GetRowsAsync_Should_Sort_Numeric_Columns_And_Keep_Nulls_Last()
+        {
+            var upload = await UploadCsvAsync(
+                "Numeric sort CSV",
+                "id,amount\n1,30\n2,\n3,10\n4,20\n");
+            var amountColumnId = upload.Columns.Single(item => item.Name == "amount").Id;
+
+            var ascendingOutput = await _datasetExplorationAppService.GetRowsAsync(new PagedDatasetRowRequestDto
+            {
+                DatasetVersionId = upload.DatasetVersionId,
+                SortDatasetColumnId = amountColumnId,
+                SortDirection = DatasetRowSortDirection.Ascending,
+                SkipCount = 0,
+                MaxResultCount = 10
+            });
+
+            ascendingOutput.TotalCount.ShouldBe(4);
+            ascendingOutput.Items.Select(item => item.RowNumber).ShouldBe(new[] { 3, 4, 1, 2 });
+            ascendingOutput.Items.Select(item => item.Values[1]).ShouldBe(new string[] { "10", "20", "30", null });
+
+            var descendingOutput = await _datasetExplorationAppService.GetRowsAsync(new PagedDatasetRowRequestDto
+            {
+                DatasetVersionId = upload.DatasetVersionId,
+                SortDatasetColumnId = amountColumnId,
+                SortDirection = DatasetRowSortDirection.Descending,
+                SkipCount = 0,
+                MaxResultCount = 10
+            });
+
+            descendingOutput.Items.Select(item => item.RowNumber).ShouldBe(new[] { 1, 4, 3, 2 });
+            descendingOutput.Items.Select(item => item.Values[1]).ShouldBe(new string[] { "30", "20", "10", null });
+        }
+
+        [Fact]
+        public async Task GetRowsAsync_Should_Sort_String_Columns_And_Paginate_Using_Original_Row_Numbers()
+        {
+            var upload = await UploadCsvAsync(
+                "String sort CSV",
+                "id,name\n1,Bob\n2,Alice\n3,Bob\n4,Carla\n");
+            var nameColumnId = upload.Columns.Single(item => item.Name == "name").Id;
+
+            var output = await _datasetExplorationAppService.GetRowsAsync(new PagedDatasetRowRequestDto
+            {
+                DatasetVersionId = upload.DatasetVersionId,
+                SortDatasetColumnId = nameColumnId,
+                SortDirection = DatasetRowSortDirection.Ascending,
+                SkipCount = 1,
+                MaxResultCount = 2
+            });
+
+            output.TotalCount.ShouldBe(4);
+            output.Items.Count.ShouldBe(2);
+            output.Items.Select(item => item.RowNumber).ShouldBe(new[] { 1, 3 });
+            output.Items.Select(item => item.Values[1]).ShouldBe(new[] { "Bob", "Bob" });
+        }
+
+        [Fact]
+        public async Task GetRowsAsync_Should_Sort_Datetime_Columns()
+        {
+            var datasetVersionId = await CreateStoredDatasetVersionAsync(
+                1,
+                AbpSession.UserId.Value,
+                DatasetFormat.Csv,
+                "datetime-sort.csv",
+                "text/csv",
+                "id,createdAt\n1,2024-01-03T00:00:00Z\n2,2024-01-01T00:00:00Z\n3,\n4,2024-01-02T00:00:00Z\n",
+                new SeedColumn("id", "integer", 1),
+                new SeedColumn("createdAt", "datetime", 2));
+
+            var createdAtColumnId = UsingDbContext(context => context.DatasetColumns
+                .Single(item => item.DatasetVersionId == datasetVersionId && item.Name == "createdAt")
+                .Id);
+
+            var output = await _datasetExplorationAppService.GetRowsAsync(new PagedDatasetRowRequestDto
+            {
+                DatasetVersionId = datasetVersionId,
+                SortDatasetColumnId = createdAtColumnId,
+                SortDirection = DatasetRowSortDirection.Ascending,
+                SkipCount = 0,
+                MaxResultCount = 10
+            });
+
+            output.Items.Select(item => item.RowNumber).ShouldBe(new[] { 2, 4, 1, 3 });
+            output.Items.Select(item => item.Values[1]).ShouldBe(new string[]
+            {
+                "2024-01-01T00:00:00Z",
+                "2024-01-02T00:00:00Z",
+                "2024-01-03T00:00:00Z",
+                null
+            });
+        }
+
+        [Fact]
+        public async Task GetRowsAsync_Should_Reject_Sort_Columns_From_Another_Dataset_Version()
+        {
+            var firstUpload = await UploadCsvAsync(
+                "First rows CSV",
+                "id,name\n1,Alice\n2,Bob\n");
+            var secondUpload = await UploadCsvAsync(
+                "Second rows CSV",
+                "id,name\n3,Carla\n4,Dave\n");
+
+            var foreignColumnId = secondUpload.Columns.Single(item => item.Name == "name").Id;
+
+            var exception = await Should.ThrowAsync<UserFriendlyException>(() =>
+                _datasetExplorationAppService.GetRowsAsync(new PagedDatasetRowRequestDto
+                {
+                    DatasetVersionId = firstUpload.DatasetVersionId,
+                    SortDatasetColumnId = foreignColumnId,
+                    SortDirection = DatasetRowSortDirection.Ascending,
+                    SkipCount = 0,
+                    MaxResultCount = 10
+                }));
+
+            exception.Message.ShouldBe("The requested column does not belong to the selected dataset version.");
+        }
+
+        [Fact]
         public async Task GetRowsAsync_Should_Return_Paged_Tabular_Json_Rows()
         {
             var upload = await _datasetIngestionAppService.UploadRawAsync(new UploadRawDatasetRequest
