@@ -237,12 +237,17 @@ namespace AstraLab.Tests.Services.Datasets
             datasetFileRepository.InsertAsync(Arg.Any<DatasetFile>())
                 .Returns<Task<DatasetFile>>(_ => throw new IOException("Simulated dataset file persistence failure."));
 
-            var manager = new DatasetRawFileManager(
+            var versionFileManager = new DatasetVersionFileManager(
                 Resolve<IAbpSession>(),
-                Resolve<IUnitOfWorkManager>(),
                 datasetFileRepository,
                 Resolve<IDatasetOwnershipAccessChecker>(),
                 storage);
+
+            var manager = new DatasetRawFileManager(
+                Resolve<IAbpSession>(),
+                Resolve<IUnitOfWorkManager>(),
+                Resolve<IDatasetOwnershipAccessChecker>(),
+                versionFileManager);
 
             using (var content = new MemoryStream(contentBytes))
             {

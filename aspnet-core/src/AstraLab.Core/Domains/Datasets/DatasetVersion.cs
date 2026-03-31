@@ -75,7 +75,7 @@ namespace AstraLab.Core.Domains.Datasets
         public ICollection<DatasetColumn> Columns { get; set; } = new List<DatasetColumn>();
 
         /// <summary>
-        /// Gets or sets the immutable raw file reference for this dataset version.
+        /// Gets or sets the immutable stored file reference for this dataset version.
         /// </summary>
         public DatasetFile RawFile { get; set; }
 

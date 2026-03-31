@@ -166,8 +166,13 @@ namespace AstraLab.Services.Datasets
                     continue;
                 }
 
-                datasetColumn.DataType = profiledColumn.InferredDataType;
-                datasetColumn.IsDataTypeInferred = true;
+                // Preserve explicitly assigned transformed column types while still updating profiled metrics.
+                if (datasetColumn.IsDataTypeInferred || string.IsNullOrWhiteSpace(datasetColumn.DataType))
+                {
+                    datasetColumn.DataType = profiledColumn.InferredDataType;
+                    datasetColumn.IsDataTypeInferred = true;
+                }
+
                 datasetColumn.NullCount = profiledColumn.NullCount;
                 datasetColumn.DistinctCount = profiledColumn.DistinctCount;
 
