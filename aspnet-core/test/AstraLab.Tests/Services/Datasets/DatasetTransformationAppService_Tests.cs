@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Abp.Application.Services.Dto;
 using Abp.Domain.Entities;
 using Abp.Runtime.Session;
 using Abp.UI;
@@ -239,6 +240,116 @@ namespace AstraLab.Tests.Services.Datasets
                 context.DatasetTransformations.Count().ShouldBe(2);
                 await Task.CompletedTask;
             });
+        }
+
+        [Fact]
+        public async Task GetHistoryAsync_Should_Return_Ordered_Transformation_History_For_A_Dataset()
+        {
+            var upload = await UploadCsvAsync(
+                "History CSV",
+                "id,name\n1,Alice\n1,Alice\n2,Bob\n3,Carla\n");
+
+            var transformResult = await _datasetTransformationAppService.TransformAsync(new TransformDatasetVersionRequest
+            {
+                SourceDatasetVersionId = upload.DatasetVersionId,
+                Steps = new List<DatasetTransformationStepRequest>
+                {
+                    new DatasetTransformationStepRequest
+                    {
+                        TransformationType = DatasetTransformationType.RemoveDuplicates,
+                        ConfigurationJson = SerializeConfiguration(new { })
+                    },
+                    new DatasetTransformationStepRequest
+                    {
+                        TransformationType = DatasetTransformationType.FilterRows,
+                        ConfigurationJson = SerializeConfiguration(new
+                        {
+                            match = "all",
+                            conditions = new[]
+                            {
+                                new
+                                {
+                                    column = "id",
+                                    @operator = "greaterThan",
+                                    value = "1"
+                                }
+                            }
+                        })
+                    }
+                }
+            });
+
+            var history = await _datasetTransformationAppService.GetHistoryAsync(new EntityDto<long>(upload.Dataset.Id));
+
+            history.DatasetId.ShouldBe(upload.Dataset.Id);
+            history.CurrentVersionId.ShouldBe(transformResult.FinalDatasetVersionId);
+            history.Items.Count.ShouldBe(2);
+            history.Items[0].Transformation.TransformationType.ShouldBe(DatasetTransformationType.FilterRows);
+            history.Items[0].SourceVersion.Id.ShouldBe(transformResult.CreatedVersions[0].Id);
+            history.Items[0].ResultVersion.Id.ShouldBe(transformResult.CreatedVersions[1].Id);
+            history.Items[1].Transformation.TransformationType.ShouldBe(DatasetTransformationType.RemoveDuplicates);
+            history.Items[1].SourceVersion.Id.ShouldBe(upload.DatasetVersionId);
+            history.Items[1].ResultVersion.Id.ShouldBe(transformResult.CreatedVersions[0].Id);
+            history.Items[1].Transformation.ConfigurationJson.ShouldContain("\"columns\":[]");
+        }
+
+        [Fact]
+        public async Task GetHistoryAsync_Should_Return_Empty_History_For_Dataset_Without_Transformations()
+        {
+            var upload = await UploadCsvAsync(
+                "No history CSV",
+                "id,name\n1,Alice\n");
+
+            var history = await _datasetTransformationAppService.GetHistoryAsync(new EntityDto<long>(upload.Dataset.Id));
+
+            history.DatasetId.ShouldBe(upload.Dataset.Id);
+            history.CurrentVersionId.ShouldBe(upload.DatasetVersionId);
+            history.Items.ShouldBeEmpty();
+        }
+
+        [Fact]
+        public async Task GetProcessedVersionAsync_Should_Return_Processed_Version_Metadata_Columns_File_And_Producing_Transformation()
+        {
+            var upload = await UploadCsvAsync(
+                "Processed details CSV",
+                "id,name\n1,Alice\n1,Alice\n2,Bob\n");
+
+            var transformResult = await _datasetTransformationAppService.TransformAsync(new TransformDatasetVersionRequest
+            {
+                SourceDatasetVersionId = upload.DatasetVersionId,
+                Steps = new List<DatasetTransformationStepRequest>
+                {
+                    new DatasetTransformationStepRequest
+                    {
+                        TransformationType = DatasetTransformationType.RemoveDuplicates,
+                        ConfigurationJson = SerializeConfiguration(new { })
+                    }
+                }
+            });
+
+            var processedVersion = await _datasetTransformationAppService.GetProcessedVersionAsync(new EntityDto<long>(transformResult.FinalDatasetVersionId));
+
+            processedVersion.Version.Id.ShouldBe(transformResult.FinalDatasetVersionId);
+            processedVersion.Version.VersionType.ShouldBe(DatasetVersionType.Processed);
+            processedVersion.Version.ParentVersionId.ShouldBe(upload.DatasetVersionId);
+            processedVersion.Version.RawFile.ShouldNotBeNull();
+            processedVersion.Version.Profile.ShouldNotBeNull();
+            processedVersion.Columns.Select(item => item.Name).ShouldBe(new[] { "id", "name" });
+            processedVersion.ProducedByTransformation.ShouldNotBeNull();
+            processedVersion.ProducedByTransformation.ResultDatasetVersionId.ShouldBe(transformResult.FinalDatasetVersionId);
+        }
+
+        [Fact]
+        public async Task GetProcessedVersionAsync_Should_Reject_Raw_Versions()
+        {
+            var upload = await UploadCsvAsync(
+                "Raw only CSV",
+                "id,name\n1,Alice\n");
+
+            var exception = await Should.ThrowAsync<UserFriendlyException>(() =>
+                _datasetTransformationAppService.GetProcessedVersionAsync(new EntityDto<long>(upload.DatasetVersionId)));
+
+            exception.Message.ShouldBe("Only processed dataset versions can be retrieved from the processed-version endpoint.");
         }
 
         [Fact]
@@ -530,6 +641,12 @@ namespace AstraLab.Tests.Services.Datasets
                     }
                 }));
 
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetTransformationAppService.GetHistoryAsync(new EntityDto<long>(upload.Dataset.Id)));
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetTransformationAppService.GetProcessedVersionAsync(new EntityDto<long>(upload.DatasetVersionId)));
+
             LoginAsHostAdmin();
 
             var hostException = await Should.ThrowAsync<UserFriendlyException>(() =>
@@ -547,6 +664,16 @@ namespace AstraLab.Tests.Services.Datasets
                 }));
 
             hostException.Message.ShouldBe("Tenant context is required for dataset transformation operations.");
+
+            var historyException = await Should.ThrowAsync<UserFriendlyException>(() =>
+                _datasetTransformationAppService.GetHistoryAsync(new EntityDto<long>(upload.Dataset.Id)));
+
+            historyException.Message.ShouldBe("Tenant context is required for dataset transformation operations.");
+
+            var processedVersionException = await Should.ThrowAsync<UserFriendlyException>(() =>
+                _datasetTransformationAppService.GetProcessedVersionAsync(new EntityDto<long>(upload.DatasetVersionId)));
+
+            processedVersionException.Message.ShouldBe("Tenant context is required for dataset transformation operations.");
         }
 
         [Fact]
@@ -602,6 +729,13 @@ namespace AstraLab.Tests.Services.Datasets
                         }
                     }
                 }));
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetTransformationAppService.GetHistoryAsync(new EntityDto<long>(UsingDbContext(otherTenantId, context =>
+                    context.Datasets.Where(item => item.TenantId == otherTenantId).Select(item => item.Id).Single()))));
+
+            await Should.ThrowAsync<EntityNotFoundException>(() =>
+                _datasetTransformationAppService.GetProcessedVersionAsync(new EntityDto<long>(otherTenantDatasetVersionId)));
         }
 
         private async Task<UploadedRawDatasetDto> UploadCsvAsync(string name, string content)
