@@ -23,6 +23,11 @@ export enum DatasetVersionType {
   Processed = 2,
 }
 
+export enum DatasetRowSortDirection {
+  Ascending = 1,
+  Descending = 2,
+}
+
 export enum DatasetTransformationType {
   RemoveDuplicates = 1,
   HandleMissingValues = 2,
@@ -307,6 +312,158 @@ export interface DatasetProfileColumnsRequest {
   pageSize: number;
   hasAnomalies?: boolean;
   inferredDataType?: string;
+}
+
+export type DatasetExplorationWorkspaceTab =
+  | "rows"
+  | "distribution"
+  | "histogram"
+  | "barChart"
+  | "scatterPlot"
+  | "correlation";
+
+export interface DatasetExplorationColumn {
+  datasetColumnId: number;
+  name: string;
+  ordinal: number;
+  dataType: string;
+  isNumeric: boolean;
+  isCategorical: boolean;
+  isTemporal: boolean;
+}
+
+export interface DatasetExplorationColumns {
+  datasetVersionId: number;
+  columns: DatasetExplorationColumn[];
+}
+
+export interface DatasetRow {
+  rowNumber: number;
+  values: Array<string | null>;
+}
+
+export interface PagedDatasetRowsRequest {
+  datasetVersionId: number;
+  page: number;
+  pageSize: number;
+  sortDatasetColumnId?: number;
+  sortDirection?: DatasetRowSortDirection;
+}
+
+export interface HistogramChartBucket {
+  label: string;
+  start: number;
+  end: number;
+  count: number;
+}
+
+export interface HistogramChart {
+  datasetVersionId: number;
+  datasetColumnId: number;
+  columnName: string;
+  bucketCount: number;
+  valueCount: number;
+  nullCount: number;
+  min?: number | null;
+  max?: number | null;
+  buckets: HistogramChartBucket[];
+}
+
+export interface BarChartCategory {
+  label: string;
+  count: number;
+}
+
+export interface BarChart {
+  datasetVersionId: number;
+  datasetColumnId: number;
+  columnName: string;
+  distinctCategoryCount: number;
+  nullCount: number;
+  categories: BarChartCategory[];
+}
+
+export interface ScatterPlotPoint {
+  rowNumber: number;
+  x: number;
+  y: number;
+}
+
+export interface ScatterPlot {
+  datasetVersionId: number;
+  xDatasetColumnId: number;
+  yDatasetColumnId: number;
+  xColumnName: string;
+  yColumnName: string;
+  pointCount: number;
+  points: ScatterPlotPoint[];
+}
+
+export interface DistributionAnalysis {
+  datasetVersionId: number;
+  datasetColumnId: number;
+  columnName: string;
+  dataType: string;
+  valueCount: number;
+  nullCount: number;
+  mean?: number | null;
+  min?: number | null;
+  max?: number | null;
+  median?: number | null;
+  distinctCount?: number | null;
+  buckets: HistogramChartBucket[];
+  categories: BarChartCategory[];
+}
+
+export interface CorrelationColumn {
+  datasetColumnId: number;
+  name: string;
+}
+
+export interface CorrelationPair {
+  xDatasetColumnId: number;
+  yDatasetColumnId: number;
+  xColumnName: string;
+  yColumnName: string;
+  coefficient?: number | null;
+  sampleSize: number;
+}
+
+export interface CorrelationAnalysis {
+  datasetVersionId: number;
+  columns: CorrelationColumn[];
+  pairs: CorrelationPair[];
+}
+
+export interface DatasetHistogramRequest {
+  datasetVersionId: number;
+  datasetColumnId: number;
+  bucketCount?: number;
+}
+
+export interface DatasetBarChartRequest {
+  datasetVersionId: number;
+  datasetColumnId: number;
+  topCategoryCount?: number;
+}
+
+export interface DatasetScatterPlotRequest {
+  datasetVersionId: number;
+  xDatasetColumnId: number;
+  yDatasetColumnId: number;
+  maxPointCount?: number;
+}
+
+export interface DatasetDistributionRequest {
+  datasetVersionId: number;
+  datasetColumnId: number;
+  bucketCount?: number;
+  topCategoryCount?: number;
+}
+
+export interface DatasetCorrelationRequest {
+  datasetVersionId: number;
+  datasetColumnIds: number[];
 }
 
 export interface RemoveDuplicatesTransformationConfig {
