@@ -10,7 +10,7 @@ using AstraLab.Services.Datasets.Storage;
 namespace AstraLab.Web.Core.Datasets.Storage
 {
     /// <summary>
-    /// Stores immutable raw dataset files on the local filesystem.
+    /// Stores immutable dataset version files on the local filesystem.
     /// </summary>
     public class LocalFileSystemRawDatasetStorage : IRawDatasetStorage, ITransientDependency
     {
@@ -40,7 +40,7 @@ namespace AstraLab.Web.Core.Datasets.Storage
         }
 
         /// <summary>
-        /// Stores the supplied raw dataset content in immutable local storage and returns a logical reference.
+        /// Stores the supplied dataset version content in immutable local storage and returns a logical reference.
         /// </summary>
         public async Task<StoredRawDatasetFileResult> StoreAsync(StoreRawDatasetFileRequest request)
         {
@@ -170,12 +170,17 @@ namespace AstraLab.Web.Core.Datasets.Storage
                 request.DatasetId.ToString(),
                 "versions",
                 request.DatasetVersionId.ToString(),
-                "raw");
+                GetStorageFolderName(request.FileKind));
         }
 
         private static string BuildStorageKey(StoreRawDatasetFileRequest request, string finalFileName)
         {
-            return $"tenants/{request.TenantId}/datasets/{request.DatasetId}/versions/{request.DatasetVersionId}/raw/{finalFileName}";
+            return $"tenants/{request.TenantId}/datasets/{request.DatasetId}/versions/{request.DatasetVersionId}/{GetStorageFolderName(request.FileKind)}/{finalFileName}";
+        }
+
+        private static string GetStorageFolderName(DatasetVersionFileKind fileKind)
+        {
+            return fileKind == DatasetVersionFileKind.Processed ? "processed" : "raw";
         }
 
         private void ValidateDeleteRequest(DeleteRawDatasetFileRequest request)

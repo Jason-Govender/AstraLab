@@ -3,7 +3,7 @@ using System.IO;
 namespace AstraLab.Services.Datasets.Storage
 {
     /// <summary>
-    /// Carries the data needed to store an immutable raw dataset file.
+    /// Carries the data needed to store an immutable dataset version file.
     /// </summary>
     public class StoreRawDatasetFileRequest
     {
@@ -36,5 +36,10 @@ namespace AstraLab.Services.Datasets.Storage
         /// Gets or sets the content stream to store.
         /// </summary>
         public Stream Content { get; set; }
+
+        /// <summary>
+        /// Gets or sets the logical storage category for the version file.
+        /// </summary>
+        public DatasetVersionFileKind FileKind { get; set; } = DatasetVersionFileKind.Raw;
     }
 }

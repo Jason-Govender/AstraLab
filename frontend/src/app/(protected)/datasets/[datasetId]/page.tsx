@@ -12,12 +12,18 @@ import { RawFileSummaryCard } from "@/components/datasets/details/rawFileSummary
 import { DatasetColumnsTable } from "@/components/datasets/shared/datasetColumnsTable";
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
 import { DatasetSchemaPreview } from "@/components/datasets/shared/datasetSchemaPreview";
+import { DatasetTransformationHistoryCard } from "@/components/datasets/transformations/datasetTransformationHistoryCard";
 import { DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE } from "@/constants/datasets";
 import {
   DatasetDetailsProvider,
   useDatasetDetailsActions,
   useDatasetDetailsState,
 } from "@/providers/datasetDetailsProvider";
+import {
+  DatasetTransformationHistoryProvider,
+  useDatasetTransformationHistoryActions,
+  useDatasetTransformationHistoryState,
+} from "@/providers/datasetTransformationHistoryProvider";
 import {
   buildDatasetColumnInsights,
   getDatasetProfileOverview,
@@ -57,6 +63,16 @@ const DatasetDetailsContent = () => {
     profileColumnsErrorMessage,
     profileColumnsTotalCount,
   } = useDatasetDetailsState();
+  const {
+    getTransformationHistory,
+    refreshTransformationHistory,
+  } = useDatasetTransformationHistoryActions();
+  const {
+    errorMessage: transformationHistoryErrorMessage,
+    history,
+    isError: isTransformationHistoryError,
+    isLoadingHistory,
+  } = useDatasetTransformationHistoryState();
   const [profileColumnsPage, setProfileColumnsPage] = useState(1);
   const [profileColumnsPageSize, setProfileColumnsPageSize] = useState(
     DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE,
@@ -78,6 +94,18 @@ const DatasetDetailsContent = () => {
   useEffect(() => {
     loadDetails();
   }, [datasetId, selectedVersionId]);
+
+  const loadTransformationHistory = useEffectEvent(() => {
+    if (!datasetId) {
+      return;
+    }
+
+    void getTransformationHistory(datasetId);
+  });
+
+  useEffect(() => {
+    loadTransformationHistory();
+  }, [datasetId]);
 
   const selectedVersionProfileId = details?.selectedVersion?.profile?.id;
   const selectedVersionDetailsId = details?.selectedVersion?.id;
@@ -176,6 +204,18 @@ const DatasetDetailsContent = () => {
             <Button
               type="primary"
               size="large"
+              onClick={() =>
+                router.push(
+                  effectiveSelectedVersionId
+                    ? `/datasets/${datasetId}/transform?sourceVersionId=${effectiveSelectedVersionId}`
+                    : `/datasets/${datasetId}/transform`,
+                )
+              }
+            >
+              Transform version
+            </Button>
+            <Button
+              size="large"
               onClick={() => router.push("/datasets/upload")}
             >
               Upload dataset
@@ -250,6 +290,30 @@ const DatasetDetailsContent = () => {
                 title="Version Columns"
               />
             )}
+
+            {isTransformationHistoryError && !history ? (
+              <DatasetErrorState
+                title="Unable to load transformation history"
+                message={
+                  transformationHistoryErrorMessage ||
+                  "Please try loading the transformation history again."
+                }
+                action={
+                  <Button
+                    type="primary"
+                    onClick={() => void refreshTransformationHistory()}
+                  >
+                    Retry history
+                  </Button>
+                }
+              />
+            ) : (
+              <DatasetTransformationHistoryCard
+                datasetId={datasetId}
+                history={history}
+                isLoading={isLoadingHistory}
+              />
+            )}
           </div>
 
           <div className={styles.sideColumn}>
@@ -267,9 +331,11 @@ const DatasetDetailsContent = () => {
 };
 
 const DatasetDetailsPage = () => (
-  <DatasetDetailsProvider>
-    <DatasetDetailsContent />
-  </DatasetDetailsProvider>
+  <DatasetTransformationHistoryProvider>
+    <DatasetDetailsProvider>
+      <DatasetDetailsContent />
+    </DatasetDetailsProvider>
+  </DatasetTransformationHistoryProvider>
 );
 
 export default DatasetDetailsPage;

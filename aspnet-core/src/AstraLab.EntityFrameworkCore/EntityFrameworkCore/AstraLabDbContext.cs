@@ -41,6 +41,11 @@ namespace AstraLab.EntityFrameworkCore
         /// </summary>
         public DbSet<DatasetColumnProfile> DatasetColumnProfiles { get; set; }
 
+        /// <summary>
+        /// Gets or sets the persisted transformation history rows for dataset version processing.
+        /// </summary>
+        public DbSet<DatasetTransformation> DatasetTransformations { get; set; }
+
         public AstraLabDbContext(DbContextOptions<AstraLabDbContext> options)
             : base(options)
         {
@@ -205,6 +210,38 @@ namespace AstraLab.EntityFrameworkCore
 
                 entity.HasIndex(datasetColumnProfile => new { datasetColumnProfile.TenantId, datasetColumnProfile.DatasetProfileId });
                 entity.HasIndex(datasetColumnProfile => datasetColumnProfile.DatasetColumnId);
+            });
+
+            modelBuilder.Entity<DatasetTransformation>(entity =>
+            {
+                entity.ToTable("DatasetTransformations");
+
+                entity.Property(datasetTransformation => datasetTransformation.ConfigurationJson)
+                    .IsRequired()
+                    .HasColumnType(DatasetTransformation.ConfigurationJsonColumnType);
+
+                entity.Property(datasetTransformation => datasetTransformation.SummaryJson)
+                    .HasColumnType(DatasetTransformation.SummaryJsonColumnType);
+
+                entity.HasOne(datasetTransformation => datasetTransformation.SourceDatasetVersion)
+                    .WithMany(datasetVersion => datasetVersion.OutgoingTransformations)
+                    .HasForeignKey(datasetTransformation => datasetTransformation.SourceDatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(datasetTransformation => datasetTransformation.ResultDatasetVersion)
+                    .WithOne(datasetVersion => datasetVersion.ProducedByTransformation)
+                    .HasForeignKey<DatasetTransformation>(datasetTransformation => datasetTransformation.ResultDatasetVersionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(datasetTransformation => new { datasetTransformation.TenantId, datasetTransformation.SourceDatasetVersionId });
+
+                entity.HasIndex(datasetTransformation => datasetTransformation.ResultDatasetVersionId)
+                    .IsUnique();
+
+                entity.HasIndex(datasetTransformation => new { datasetTransformation.SourceDatasetVersionId, datasetTransformation.ExecutionOrder })
+                    .IsUnique();
+
+                entity.HasIndex(datasetTransformation => new { datasetTransformation.TenantId, datasetTransformation.ExecutedAt });
             });
         }
     }

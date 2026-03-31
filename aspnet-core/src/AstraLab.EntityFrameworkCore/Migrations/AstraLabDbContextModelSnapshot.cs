@@ -1913,6 +1913,75 @@ namespace AstraLab.Migrations
                     b.ToTable("DatasetProfiles", (string)null);
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.Datasets.DatasetTransformation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExecutedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ExecutionOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ResultDatasetVersionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("SourceDatasetVersionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SummaryJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TransformationType")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResultDatasetVersionId")
+                        .IsUnique();
+
+                    b.HasIndex("SourceDatasetVersionId", "ExecutionOrder")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "ExecutedAt");
+
+                    b.HasIndex("TenantId", "SourceDatasetVersionId");
+
+                    b.ToTable("DatasetTransformations", (string)null);
+                });
+
             modelBuilder.Entity("AstraLab.Core.Domains.Datasets.DatasetVersion", b =>
                 {
                     b.Property<long>("Id")
@@ -2328,6 +2397,24 @@ namespace AstraLab.Migrations
                     b.Navigation("DatasetVersion");
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.Datasets.DatasetTransformation", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetVersion", "ResultDatasetVersion")
+                        .WithOne("ProducedByTransformation")
+                        .HasForeignKey("AstraLab.Core.Domains.Datasets.DatasetTransformation", "ResultDatasetVersionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetVersion", "SourceDatasetVersion")
+                        .WithMany("OutgoingTransformations")
+                        .HasForeignKey("SourceDatasetVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ResultDatasetVersion");
+
+                    b.Navigation("SourceDatasetVersion");
+                });
+
             modelBuilder.Entity("AstraLab.Core.Domains.Datasets.DatasetVersion", b =>
                 {
                     b.HasOne("AstraLab.Core.Domains.Datasets.Dataset", "Dataset")
@@ -2462,6 +2549,10 @@ namespace AstraLab.Migrations
             modelBuilder.Entity("AstraLab.Core.Domains.Datasets.DatasetVersion", b =>
                 {
                     b.Navigation("Columns");
+
+                    b.Navigation("OutgoingTransformations");
+
+                    b.Navigation("ProducedByTransformation");
 
                     b.Navigation("Profile");
 

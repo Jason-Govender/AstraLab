@@ -6,6 +6,10 @@ import type {
   DatasetListItem,
   DatasetProfileColumnsRequest,
   DatasetProfileSummary,
+  DatasetTransformationHistory,
+  ProcessedDatasetVersion,
+  TransformDatasetVersionRequest,
+  TransformDatasetVersionResult,
   UploadedRawDatasetResult,
   UploadRawDatasetPayload,
 } from "@/types/datasets";
@@ -17,6 +21,12 @@ const DATASET_GET_DETAILS_ENDPOINT = "/api/services/app/Dataset/GetDetails";
 const DATASET_PROFILE_GET_ENDPOINT = "/api/services/app/DatasetProfiling/Get";
 const DATASET_PROFILE_GET_COLUMNS_ENDPOINT =
   "/api/services/app/DatasetProfiling/GetColumns";
+const DATASET_TRANSFORMATION_HISTORY_ENDPOINT =
+  "/api/services/app/DatasetTransformation/GetHistory";
+const DATASET_TRANSFORMATION_PROCESSED_VERSION_ENDPOINT =
+  "/api/services/app/DatasetTransformation/GetProcessedVersion";
+const DATASET_TRANSFORMATION_TRANSFORM_ENDPOINT =
+  "/api/services/app/DatasetTransformation/Transform";
 
 const buildUploadFormData = ({
   name,
@@ -115,6 +125,44 @@ export const getDatasetProfileColumns = async (
       inferredDataType: request.inferredDataType || undefined,
     },
   });
+
+  return response.data.result;
+};
+
+export const getDatasetTransformationHistory = async (
+  datasetId: number,
+): Promise<DatasetTransformationHistory> => {
+  const response = await axiosInstance.get<
+    AbpApiResponse<DatasetTransformationHistory>
+  >(DATASET_TRANSFORMATION_HISTORY_ENDPOINT, {
+    params: {
+      id: datasetId,
+    },
+  });
+
+  return response.data.result;
+};
+
+export const getProcessedDatasetVersion = async (
+  datasetVersionId: number,
+): Promise<ProcessedDatasetVersion> => {
+  const response = await axiosInstance.get<
+    AbpApiResponse<ProcessedDatasetVersion>
+  >(DATASET_TRANSFORMATION_PROCESSED_VERSION_ENDPOINT, {
+    params: {
+      id: datasetVersionId,
+    },
+  });
+
+  return response.data.result;
+};
+
+export const transformDatasetVersion = async (
+  request: TransformDatasetVersionRequest,
+): Promise<TransformDatasetVersionResult> => {
+  const response = await axiosInstance.post<
+    AbpApiResponse<TransformDatasetVersionResult>
+  >(DATASET_TRANSFORMATION_TRANSFORM_ENDPOINT, request);
 
   return response.data.result;
 };
