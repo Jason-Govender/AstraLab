@@ -1,7 +1,7 @@
 "use client";
 
 import { Heatmap } from "@ant-design/charts";
-import { Card, Empty, Table, Tag, Typography } from "antd";
+import { Card, Empty, Table, Tag, Typography, theme } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { CorrelationAnalysis, CorrelationPair } from "@/types/datasets";
 import { formatNumber } from "@/utils/datasets";
@@ -23,6 +23,7 @@ export const DatasetCorrelationMatrixCard = ({
   isLoading = false,
 }: DatasetCorrelationMatrixCardProps) => {
   const { styles } = useStyles();
+  const { token } = theme.useToken();
 
   const pairColumns: ColumnsType<CorrelationPair> = [
     {
@@ -55,6 +56,59 @@ export const DatasetCorrelationMatrixCard = ({
     },
   ];
 
+  const heatmapConfig = correlation
+    ? {
+        data: buildCorrelationHeatmapData(correlation),
+        xField: "xColumnName",
+        yField: "yColumnName",
+        colorField: "coefficient",
+        height: 320,
+        theme: "classicDark",
+        paddingLeft: 72,
+        paddingRight: 24,
+        paddingTop: 24,
+        paddingBottom: 48,
+        tooltip: {
+          title: false,
+          items: [
+            { channel: "x", name: "X Column" },
+            { channel: "y", name: "Y Column" },
+            {
+              channel: "color",
+              name: "Coefficient",
+              valueFormatter: (value: number) => formatNumber(value, 4),
+            },
+          ],
+        },
+        axis: {
+          x: {
+            title: "X Column",
+            labelAutoHide: false,
+            labelAutoRotate: false,
+            labelFill: token.colorTextSecondary,
+            titleFill: token.colorTextSecondary,
+            line: true,
+            tick: false,
+            lineStroke: token.colorBorderSecondary,
+          },
+          y: {
+            title: "Y Column",
+            labelAutoHide: false,
+            labelFill: token.colorTextSecondary,
+            titleFill: token.colorTextSecondary,
+            line: true,
+            tick: false,
+            lineStroke: token.colorBorderSecondary,
+          },
+        },
+        scale: {
+          color: {
+            range: ["#8b2f45", "#2d5b8f", "#4b89dc", "#79d3cf", "#ebf7d5"],
+          },
+        },
+      }
+    : undefined;
+
   return (
     <Card loading={isLoading} className={styles.card}>
       <Title level={4} className={styles.title}>
@@ -71,13 +125,7 @@ export const DatasetCorrelationMatrixCard = ({
           <Paragraph className={styles.helperText}>
             Backend-calculated Pearson correlation pairs for the selected numeric columns.
           </Paragraph>
-          <Heatmap
-            data={buildCorrelationHeatmapData(correlation)}
-            xField="xColumnName"
-            yField="yColumnName"
-            colorField="coefficient"
-            height={320}
-          />
+          <Heatmap {...heatmapConfig} />
           <Table<CorrelationPair>
             rowKey={(pair) => `${pair.xDatasetColumnId}-${pair.yDatasetColumnId}`}
             columns={pairColumns}
