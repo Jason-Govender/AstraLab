@@ -1,7 +1,7 @@
 "use client";
 
 import { Column } from "@ant-design/charts";
-import { Card, Descriptions, Empty, Table, Typography } from "antd";
+import { Card, Descriptions, Empty, Table, Typography, theme } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { BarChartCategory, DistributionAnalysis } from "@/types/datasets";
 import { formatNumber } from "@/utils/datasets";
@@ -20,6 +20,7 @@ export const DatasetDistributionSummaryCard = ({
   isLoading = false,
 }: DatasetDistributionSummaryCardProps) => {
   const { styles } = useStyles();
+  const { token } = theme.useToken();
 
   const categoryColumns: ColumnsType<BarChartCategory> = [
     {
@@ -35,6 +36,50 @@ export const DatasetDistributionSummaryCard = ({
       render: (value: number) => formatNumber(value, 0),
     },
   ];
+
+  const numericDistributionChartConfig = distribution
+    ? {
+        data: distribution.buckets,
+        xField: "label",
+        yField: "count",
+        height: 320,
+        color: token.colorPrimary,
+        paddingLeft: 56,
+        paddingRight: 16,
+        paddingTop: 24,
+        paddingBottom: 72,
+        style: {
+          fillOpacity: 0.9,
+          lineWidth: 1,
+          stroke: token.colorPrimaryBorder,
+        },
+        axis: {
+          x: {
+            title: "Value range",
+            labelAutoHide: true,
+            labelAutoRotate: false,
+            tick: true,
+            line: true,
+            labelFill: token.colorTextSecondary,
+            titleFill: token.colorTextSecondary,
+            lineStroke: token.colorBorderSecondary,
+            tickStroke: token.colorBorderSecondary,
+          },
+          y: {
+            title: "Count",
+            tick: true,
+            line: true,
+            grid: true,
+            labelFill: token.colorTextSecondary,
+            titleFill: token.colorTextSecondary,
+            lineStroke: token.colorBorderSecondary,
+            tickStroke: token.colorBorderSecondary,
+            gridStroke: "rgba(148, 163, 184, 0.16)",
+            gridLineWidth: 1,
+          },
+        },
+      }
+    : undefined;
 
   return (
     <Card loading={isLoading} className={styles.card}>
@@ -113,13 +158,7 @@ export const DatasetDistributionSummaryCard = ({
               <Paragraph className={styles.helperText}>
                 Numeric distribution rendered from backend-generated histogram buckets.
               </Paragraph>
-              <Column
-                data={distribution.buckets}
-                xField="label"
-                yField="count"
-                height={320}
-                axis={{ x: { labelAutoHide: true } }}
-              />
+              <Column {...numericDistributionChartConfig} />
             </>
           ) : (
             <Table<BarChartCategory>

@@ -25,7 +25,7 @@ import {
   buildDefaultDistributionRequest,
   buildDefaultHistogramRequest,
   buildDefaultScatterPlotRequest,
-  getCategoricalExplorationColumns,
+  getBarChartEligibleColumns,
   getDistributionEligibleColumns,
   getNumericExplorationColumns,
 } from "@/utils/datasetExploration";
@@ -124,9 +124,7 @@ export const DatasetExplorationWorkspace = ({
     sortDirection: DEFAULT_DATASET_EXPLORATION_SORT_DIRECTION,
   };
   const numericColumns = getNumericExplorationColumns(explorationColumns?.columns || []);
-  const categoricalColumns = getCategoricalExplorationColumns(
-    explorationColumns?.columns || [],
-  );
+  const barChartColumns = getBarChartEligibleColumns(explorationColumns?.columns || []);
   const distributionColumns = getDistributionEligibleColumns(
     explorationColumns?.columns || [],
   );
@@ -362,7 +360,7 @@ export const DatasetExplorationWorkspace = ({
                     value={barChartRequest?.datasetColumnId}
                     className={styles.select}
                     placeholder="Select a categorical column"
-                    options={categoricalColumns.map((column) => ({
+                    options={barChartColumns.map((column) => ({
                       label: column.name,
                       value: column.datasetColumnId,
                     }))}

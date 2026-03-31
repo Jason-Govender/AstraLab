@@ -287,6 +287,9 @@ export const getDatasetCorrelation = async (
       datasetVersionId: request.datasetVersionId,
       datasetColumnIds: request.datasetColumnIds,
     },
+    paramsSerializer: {
+      indexes: null,
+    },
   });
 
   return response.data.result;

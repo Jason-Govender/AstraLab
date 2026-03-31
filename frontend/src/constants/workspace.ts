@@ -17,13 +17,6 @@ export const WORKSPACE_NAVIGATION: WorkspaceNavItem[] = [
     isAvailable: true,
   },
   {
-    key: "analysis",
-    label: "Analysis",
-    href: "/analysis",
-    icon: "analysis",
-    isAvailable: false,
-  },
-  {
     key: "assistant",
     label: "AI Assistant",
     href: "/ai-assistant",

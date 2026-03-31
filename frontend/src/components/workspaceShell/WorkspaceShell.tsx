@@ -15,7 +15,6 @@ import {
 } from "antd";
 import type { MenuProps } from "antd";
 import {
-  BarChartOutlined,
   BellOutlined,
   DashboardOutlined,
   DatabaseOutlined,
@@ -41,7 +40,6 @@ const { Text, Title } = Typography;
 const ICON_MAP: Record<WorkspaceIconKey, ReactNode> = {
   dashboard: <DashboardOutlined />,
   datasets: <DatabaseOutlined />,
-  analysis: <BarChartOutlined />,
   assistant: <RobotOutlined />,
   mlWorkspace: <ExperimentOutlined />,
   reports: <FileTextOutlined />,
