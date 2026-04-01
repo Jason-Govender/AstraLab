@@ -23,7 +23,9 @@ namespace AstraLab.Web.Core.Storage
                 ForcePathStyle = options.ForcePathStyle
             };
 
-            if (!string.IsNullOrWhiteSpace(options.Region))
+            // When a custom service URL is supplied, prefer it over AWS region-derived
+            // endpoints so S3-compatible providers like Cloudflare R2 are addressed correctly.
+            if (string.IsNullOrWhiteSpace(options.ServiceUrl) && !string.IsNullOrWhiteSpace(options.Region))
             {
                 configuration.RegionEndpoint = RegionEndpoint.GetBySystemName(options.Region);
             }
