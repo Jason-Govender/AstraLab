@@ -2053,6 +2053,316 @@ namespace AstraLab.Migrations
                     b.ToTable("DatasetVersions", (string)null);
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLExperiment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AlgorithmKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("DatasetVersionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DispatchErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ExecutedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FailureMessage")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("TargetDatasetColumnId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TaskType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TrainingConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("WarningsJson")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DatasetVersionId");
+
+                    b.HasIndex("TargetDatasetColumnId");
+
+                    b.HasIndex("TenantId", "DatasetVersionId", "ExecutedAt");
+
+                    b.HasIndex("TenantId", "DatasetVersionId", "Status");
+
+                    b.ToTable("MLExperiments", (string)null);
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLExperimentFeature", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("DatasetColumnId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MLExperimentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DatasetColumnId");
+
+                    b.HasIndex("MLExperimentId", "DatasetColumnId")
+                        .IsUnique();
+
+                    b.HasIndex("MLExperimentId", "Ordinal")
+                        .IsUnique();
+
+                    b.ToTable("MLExperimentFeatures", (string)null);
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLModel", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ArtifactStorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ArtifactStorageProvider")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MLExperimentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ModelType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PerformanceSummaryJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WarningsJson")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MLExperimentId")
+                        .IsUnique();
+
+                    b.HasIndex("ArtifactStorageProvider", "ArtifactStorageKey")
+                        .IsUnique();
+
+                    b.ToTable("MLModels", (string)null);
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLModelFeatureImportance", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("DatasetColumnId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("ImportanceScore")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MLModelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DatasetColumnId");
+
+                    b.HasIndex("MLModelId", "DatasetColumnId")
+                        .IsUnique();
+
+                    b.ToTable("MLModelFeatureImportances", (string)null);
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLModelMetric", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MLModelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MetricName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("MetricValue")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MLModelId", "MetricName")
+                        .IsUnique();
+
+                    b.ToTable("MLModelMetrics", (string)null);
+                });
+
             modelBuilder.Entity("AstraLab.MultiTenancy.Tenant", b =>
                 {
                     b.Property<int>("Id")
@@ -2433,6 +2743,84 @@ namespace AstraLab.Migrations
                     b.Navigation("ParentVersion");
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLExperiment", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetVersion", "DatasetVersion")
+                        .WithMany("MlExperiments")
+                        .HasForeignKey("DatasetVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetColumn", "TargetDatasetColumn")
+                        .WithMany()
+                        .HasForeignKey("TargetDatasetColumnId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("DatasetVersion");
+
+                    b.Navigation("TargetDatasetColumn");
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLExperimentFeature", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetColumn", "DatasetColumn")
+                        .WithMany()
+                        .HasForeignKey("DatasetColumnId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AstraLab.Core.Domains.ML.MLExperiment", "MLExperiment")
+                        .WithMany("SelectedFeatures")
+                        .HasForeignKey("MLExperimentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DatasetColumn");
+
+                    b.Navigation("MLExperiment");
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLModel", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.ML.MLExperiment", "MLExperiment")
+                        .WithOne("Model")
+                        .HasForeignKey("AstraLab.Core.Domains.ML.MLModel", "MLExperimentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MLExperiment");
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLModelFeatureImportance", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetColumn", "DatasetColumn")
+                        .WithMany()
+                        .HasForeignKey("DatasetColumnId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AstraLab.Core.Domains.ML.MLModel", "MLModel")
+                        .WithMany("FeatureImportances")
+                        .HasForeignKey("MLModelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DatasetColumn");
+
+                    b.Navigation("MLModel");
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLModelMetric", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.ML.MLModel", "MLModel")
+                        .WithMany("Metrics")
+                        .HasForeignKey("MLModelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MLModel");
+                });
+
             modelBuilder.Entity("AstraLab.MultiTenancy.Tenant", b =>
                 {
                     b.HasOne("AstraLab.Authorization.Users.User", "CreatorUser")
@@ -2550,6 +2938,8 @@ namespace AstraLab.Migrations
                 {
                     b.Navigation("Columns");
 
+                    b.Navigation("MlExperiments");
+
                     b.Navigation("OutgoingTransformations");
 
                     b.Navigation("ProducedByTransformation");
@@ -2557,6 +2947,20 @@ namespace AstraLab.Migrations
                     b.Navigation("Profile");
 
                     b.Navigation("RawFile");
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLExperiment", b =>
+                {
+                    b.Navigation("Model");
+
+                    b.Navigation("SelectedFeatures");
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.ML.MLModel", b =>
+                {
+                    b.Navigation("FeatureImportances");
+
+                    b.Navigation("Metrics");
                 });
 #pragma warning restore 612, 618
         }

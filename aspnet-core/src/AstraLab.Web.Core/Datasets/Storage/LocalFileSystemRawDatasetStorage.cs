@@ -12,7 +12,7 @@ namespace AstraLab.Web.Core.Datasets.Storage
     /// <summary>
     /// Stores immutable dataset version files on the local filesystem.
     /// </summary>
-    public class LocalFileSystemRawDatasetStorage : IRawDatasetStorage, ITransientDependency
+    public class LocalFileSystemRawDatasetStorage : IRawDatasetStorageProvider, ITransientDependency
     {
         /// <summary>
         /// Gets the persisted provider name for local filesystem storage.
@@ -20,6 +20,18 @@ namespace AstraLab.Web.Core.Datasets.Storage
         public const string ProviderName = "local-filesystem";
 
         private readonly string _rawRootPath;
+
+        /// <summary>
+        /// Gets the persisted provider name handled by this implementation.
+        /// </summary>
+        public string ProviderNameValue => ProviderName;
+
+        /// <summary>
+        /// Gets a value indicating whether this provider can accept new writes.
+        /// </summary>
+        public bool CanStore => true;
+
+        string IRawDatasetStorageProvider.ProviderName => ProviderNameValue;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LocalFileSystemRawDatasetStorage"/> class.
@@ -47,7 +59,6 @@ namespace AstraLab.Web.Core.Datasets.Storage
             ValidateRequest(request);
 
             var originalFileName = Path.GetFileName(request.OriginalFileName.Trim());
-            var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
             var storageDirectory = BuildStorageDirectory(request);
             var tempFilePath = Path.Combine(storageDirectory, $".upload-{Guid.NewGuid():N}.tmp");
 
@@ -69,15 +80,15 @@ namespace AstraLab.Web.Core.Datasets.Storage
                     sizeBytes = tempFileStream.Length;
                 }
 
-                var finalFileName = $"{checksumSha256}{extension}";
-                var finalFilePath = Path.Combine(storageDirectory, finalFileName);
+                var storageKey = DatasetStorageKeyBuilder.BuildStorageKey(request, checksumSha256);
+                var finalFilePath = ResolveStoragePath(storageKey);
 
                 File.Move(tempFilePath, finalFilePath, false);
 
                 return new StoredRawDatasetFileResult
                 {
                     StorageProvider = ProviderName,
-                    StorageKey = BuildStorageKey(request, finalFileName),
+                    StorageKey = storageKey,
                     OriginalFileName = originalFileName,
                     SizeBytes = sizeBytes,
                     ChecksumSha256 = checksumSha256
@@ -173,14 +184,9 @@ namespace AstraLab.Web.Core.Datasets.Storage
                 GetStorageFolderName(request.FileKind));
         }
 
-        private static string BuildStorageKey(StoreRawDatasetFileRequest request, string finalFileName)
-        {
-            return $"tenants/{request.TenantId}/datasets/{request.DatasetId}/versions/{request.DatasetVersionId}/{GetStorageFolderName(request.FileKind)}/{finalFileName}";
-        }
-
         private static string GetStorageFolderName(DatasetVersionFileKind fileKind)
         {
-            return fileKind == DatasetVersionFileKind.Processed ? "processed" : "raw";
+            return DatasetStorageKeyBuilder.GetStorageFolderName(fileKind);
         }
 
         private void ValidateDeleteRequest(DeleteRawDatasetFileRequest request)
