@@ -21,24 +21,17 @@ class JobRequest(BaseModel):
     tenant_id: int = Field(alias="tenantId")
     dataset_version_id: int = Field(alias="datasetVersionId")
     dataset_format: Literal["csv", "json"] = Field(alias="datasetFormat")
-    dataset_storage_provider: str = Field(alias="datasetStorageProvider")
-    dataset_storage_key: str = Field(alias="datasetStorageKey")
+    dataset_download_url: str = Field(alias="datasetDownloadUrl")
     task_type: TaskType = Field(alias="taskType")
     algorithm_key: str = Field(alias="algorithmKey")
     training_configuration_json: str = Field(alias="trainingConfigurationJson")
+    artifact_upload_url: str = Field(alias="artifactUploadUrl")
+    artifact_storage_provider: str = Field(alias="artifactStorageProvider")
+    artifact_storage_key: str = Field(alias="artifactStorageKey")
     feature_columns: list[JobColumn] = Field(alias="featureColumns", min_length=1)
     target_column: JobColumn | None = Field(default=None, alias="targetColumn")
     completed_callback_url: str = Field(alias="completedCallbackUrl")
     failed_callback_url: str = Field(alias="failedCallbackUrl")
-
-    @field_validator("dataset_storage_provider")
-    @classmethod
-    def validate_storage_provider(cls, value: str) -> str:
-        normalized = value.strip().lower()
-        if normalized != "local-filesystem":
-            raise ValueError("Only the local-filesystem storage provider is supported.")
-
-        return normalized
 
     @field_validator("algorithm_key")
     @classmethod

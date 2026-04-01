@@ -5,21 +5,33 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Abp.Dependency;
 using Abp.Extensions;
+using Amazon.S3;
+using Amazon.S3.Model;
 using AstraLab.Services.Datasets.Storage;
+using AstraLab.Services.Storage;
+using AstraLab.Web.Core.Storage;
 
 namespace AstraLab.Web.Core.Datasets.Storage
 {
     /// <summary>
-    /// Stores immutable dataset version files on the local filesystem.
+    /// Stores immutable dataset version files in an S3-compatible object store.
     /// </summary>
-    public class LocalFileSystemRawDatasetStorage : IRawDatasetStorageProvider, ITransientDependency
+    public class S3CompatibleRawDatasetStorage : IRawDatasetStorageProvider, ITransientDependency
     {
         /// <summary>
-        /// Gets the persisted provider name for local filesystem storage.
+        /// Gets the persisted provider name for S3-compatible dataset storage.
         /// </summary>
-        public const string ProviderName = "local-filesystem";
+        public const string ProviderName = "s3-compatible";
 
-        private readonly string _rawRootPath;
+        private readonly ObjectStorageOptions _objectStorageOptions;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="S3CompatibleRawDatasetStorage"/> class.
+        /// </summary>
+        public S3CompatibleRawDatasetStorage(ObjectStorageOptions objectStorageOptions)
+        {
+            _objectStorageOptions = objectStorageOptions;
+        }
 
         /// <summary>
         /// Gets the persisted provider name handled by this implementation.
@@ -34,35 +46,16 @@ namespace AstraLab.Web.Core.Datasets.Storage
         string IRawDatasetStorageProvider.ProviderName => ProviderNameValue;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="LocalFileSystemRawDatasetStorage"/> class.
-        /// </summary>
-        public LocalFileSystemRawDatasetStorage(DatasetStorageOptions datasetStorageOptions)
-        {
-            if (datasetStorageOptions == null)
-            {
-                throw new ArgumentNullException(nameof(datasetStorageOptions));
-            }
-
-            if (datasetStorageOptions.RawRootPath.IsNullOrWhiteSpace())
-            {
-                throw new ArgumentException("Raw dataset storage root path must be configured.", nameof(datasetStorageOptions));
-            }
-
-            _rawRootPath = datasetStorageOptions.RawRootPath;
-        }
-
-        /// <summary>
-        /// Stores the supplied dataset version content in immutable local storage and returns a logical reference.
+        /// Stores the supplied dataset file in S3-compatible object storage.
         /// </summary>
         public async Task<StoredRawDatasetFileResult> StoreAsync(StoreRawDatasetFileRequest request)
         {
             ValidateRequest(request);
+            ValidateBucketConfiguration();
 
             var originalFileName = Path.GetFileName(request.OriginalFileName.Trim());
-            var storageDirectory = BuildStorageDirectory(request);
-            var tempFilePath = Path.Combine(storageDirectory, $".upload-{Guid.NewGuid():N}.tmp");
-
-            Directory.CreateDirectory(storageDirectory);
+            var tempFilePath = Path.Combine(Path.GetTempPath(), "AstraLab", "DatasetStorage", Guid.NewGuid().ToString("N") + ".tmp");
+            Directory.CreateDirectory(Path.GetDirectoryName(tempFilePath));
 
             try
             {
@@ -81,9 +74,26 @@ namespace AstraLab.Web.Core.Datasets.Storage
                 }
 
                 var storageKey = DatasetStorageKeyBuilder.BuildStorageKey(request, checksumSha256);
-                var finalFilePath = ResolveStoragePath(storageKey);
+                var objectKey = S3CompatibleStoragePathBuilder.BuildDatasetObjectKey(_objectStorageOptions, storageKey);
 
-                File.Move(tempFilePath, finalFilePath, false);
+                using (var client = S3CompatibleStorageClientFactory.Create(_objectStorageOptions))
+                {
+                    if (await ObjectExistsAsync(client, objectKey))
+                    {
+                        throw new IOException("An immutable dataset object already exists for the requested logical key.");
+                    }
+
+                    using (var readStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        await client.PutObjectAsync(new PutObjectRequest
+                        {
+                            BucketName = _objectStorageOptions.DatasetBucketName,
+                            Key = objectKey,
+                            InputStream = readStream,
+                            AutoCloseStream = false
+                        });
+                    }
+                }
 
                 return new StoredRawDatasetFileResult
                 {
@@ -104,38 +114,39 @@ namespace AstraLab.Web.Core.Datasets.Storage
         }
 
         /// <summary>
-        /// Opens a previously stored raw dataset file for read access.
+        /// Opens a previously stored dataset file for read access.
         /// </summary>
-        public Task<Stream> OpenReadAsync(OpenReadRawDatasetFileRequest request)
+        public async Task<Stream> OpenReadAsync(OpenReadRawDatasetFileRequest request)
         {
             ValidateOpenReadRequest(request);
+            ValidateBucketConfiguration();
 
-            var filePath = ResolveStoragePath(request.StorageKey);
-            if (!File.Exists(filePath))
+            using (var client = S3CompatibleStorageClientFactory.Create(_objectStorageOptions))
             {
-                throw new FileNotFoundException("The requested raw dataset file could not be found.", filePath);
-            }
+                var response = await client.GetObjectAsync(_objectStorageOptions.DatasetBucketName, S3CompatibleStoragePathBuilder.BuildDatasetObjectKey(_objectStorageOptions, request.StorageKey));
+                var memoryStream = new MemoryStream();
+                using (response)
+                {
+                    await response.ResponseStream.CopyToAsync(memoryStream);
+                }
 
-            Stream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return Task.FromResult(fileStream);
+                memoryStream.Position = 0;
+                return memoryStream;
+            }
         }
 
         /// <summary>
-        /// Deletes a previously stored raw dataset file by logical reference.
+        /// Deletes a previously stored dataset file.
         /// </summary>
-        public Task DeleteAsync(DeleteRawDatasetFileRequest request)
+        public async Task DeleteAsync(DeleteRawDatasetFileRequest request)
         {
             ValidateDeleteRequest(request);
+            ValidateBucketConfiguration();
 
-            var filePath = ResolveStoragePath(request.StorageKey);
-            if (!File.Exists(filePath))
+            using (var client = S3CompatibleStorageClientFactory.Create(_objectStorageOptions))
             {
-                return Task.CompletedTask;
+                await client.DeleteObjectAsync(_objectStorageOptions.DatasetBucketName, S3CompatibleStoragePathBuilder.BuildDatasetObjectKey(_objectStorageOptions, request.StorageKey));
             }
-
-            File.Delete(filePath);
-            DeleteEmptyParentDirectories(filePath);
-            return Task.CompletedTask;
         }
 
         private static void ValidateRequest(StoreRawDatasetFileRequest request)
@@ -171,22 +182,22 @@ namespace AstraLab.Web.Core.Datasets.Storage
             }
         }
 
-        private string BuildStorageDirectory(StoreRawDatasetFileRequest request)
+        private void ValidateOpenReadRequest(OpenReadRawDatasetFileRequest request)
         {
-            return Path.Combine(
-                _rawRootPath,
-                "tenants",
-                request.TenantId.ToString(),
-                "datasets",
-                request.DatasetId.ToString(),
-                "versions",
-                request.DatasetVersionId.ToString(),
-                GetStorageFolderName(request.FileKind));
-        }
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
 
-        private static string GetStorageFolderName(DatasetVersionFileKind fileKind)
-        {
-            return DatasetStorageKeyBuilder.GetStorageFolderName(fileKind);
+            if (!string.Equals(request.StorageProvider, ProviderName, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("The specified storage provider is not supported by the S3-compatible dataset storage.", nameof(request));
+            }
+
+            if (request.StorageKey.IsNullOrWhiteSpace())
+            {
+                throw new ArgumentException("The storage key is required.", nameof(request));
+            }
         }
 
         private void ValidateDeleteRequest(DeleteRawDatasetFileRequest request)
@@ -198,7 +209,7 @@ namespace AstraLab.Web.Core.Datasets.Storage
 
             if (!string.Equals(request.StorageProvider, ProviderName, StringComparison.Ordinal))
             {
-                throw new ArgumentException("The specified storage provider is not supported by the local filesystem storage.", nameof(request));
+                throw new ArgumentException("The specified storage provider is not supported by the S3-compatible dataset storage.", nameof(request));
             }
 
             if (request.StorageKey.IsNullOrWhiteSpace())
@@ -207,50 +218,26 @@ namespace AstraLab.Web.Core.Datasets.Storage
             }
         }
 
-        private void ValidateOpenReadRequest(OpenReadRawDatasetFileRequest request)
+        private void ValidateBucketConfiguration()
         {
-            if (request == null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
+            S3CompatibleObjectStorageOptionsValidator.ValidateBaseConfiguration(_objectStorageOptions);
 
-            if (!string.Equals(request.StorageProvider, ProviderName, StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(_objectStorageOptions.DatasetBucketName))
             {
-                throw new ArgumentException("The specified storage provider is not supported by the local filesystem storage.", nameof(request));
-            }
-
-            if (request.StorageKey.IsNullOrWhiteSpace())
-            {
-                throw new ArgumentException("The storage key is required.", nameof(request));
+                throw new InvalidOperationException("The dataset object-storage bucket is not configured.");
             }
         }
 
-        private string ResolveStoragePath(string storageKey)
+        private async Task<bool> ObjectExistsAsync(IAmazonS3 client, string objectKey)
         {
-            var normalizedStorageKey = storageKey.Replace('/', Path.DirectorySeparatorChar);
-            var fullRootPath = Path.GetFullPath(_rawRootPath);
-            var fullPath = Path.GetFullPath(Path.Combine(fullRootPath, normalizedStorageKey));
-
-            if (!fullPath.StartsWith(fullRootPath, StringComparison.OrdinalIgnoreCase))
+            try
             {
-                throw new InvalidOperationException("The storage key resolves outside the configured raw dataset storage root.");
+                await client.GetObjectMetadataAsync(_objectStorageOptions.DatasetBucketName, objectKey);
+                return true;
             }
-
-            return fullPath;
-        }
-
-        private void DeleteEmptyParentDirectories(string filePath)
-        {
-            var fullRootPath = Path.GetFullPath(_rawRootPath).TrimEnd(Path.DirectorySeparatorChar);
-            var directory = new DirectoryInfo(Path.GetDirectoryName(filePath));
-
-            while (directory != null &&
-                   !string.Equals(directory.FullName.TrimEnd(Path.DirectorySeparatorChar), fullRootPath, StringComparison.OrdinalIgnoreCase) &&
-                   !directory.EnumerateFileSystemInfos().Any())
+            catch (AmazonS3Exception exception) when (exception.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                var parentDirectory = directory.Parent;
-                directory.Delete();
-                directory = parentDirectory;
+                return false;
             }
         }
     }

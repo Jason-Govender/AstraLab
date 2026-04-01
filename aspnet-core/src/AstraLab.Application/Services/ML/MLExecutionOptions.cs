@@ -21,7 +21,12 @@ namespace AstraLab.Services.ML
         public string SharedSecret { get; set; }
 
         /// <summary>
-        /// Gets or sets the resolved artifact root path used by the executor.
+        /// Gets or sets the default provider used for new ML artifact writes.
+        /// </summary>
+        public string DefaultArtifactStorageProvider { get; set; } = "local-filesystem";
+
+        /// <summary>
+        /// Gets or sets the resolved local artifact root path used for legacy and development artifact files.
         /// </summary>
         public string ArtifactRootPath { get; set; }
     }

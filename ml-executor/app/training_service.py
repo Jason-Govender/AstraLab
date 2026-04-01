@@ -69,7 +69,7 @@ def train_job(job: JobRequest, settings: ExecutorSettings) -> TrainingResult:
     configuration = job.parse_training_configuration()
     warnings: list[str] = []
 
-    dataframe = load_dataset(settings.dataset_root, job.dataset_format, job.dataset_storage_key)
+    dataframe = load_dataset(job.dataset_download_url, job.dataset_format, settings.http_timeout_seconds)
     dataframe = dataframe.copy()
 
     feature_names = [column.name for column in sorted(job.feature_columns, key=lambda item: item.ordinal)]

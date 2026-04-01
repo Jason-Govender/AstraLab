@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import timezone
 
-from .artifact_service import save_artifact
+from .artifact_service import upload_artifact
 from .callback_client import post_completion_callback, post_failure_callback
 from .job_registry import JobRegistry
 from .schemas import CompletionCallbackPayload, FailureCallbackPayload, JobAcceptedResponse, JobRequest
@@ -30,10 +30,9 @@ class JobExecutor:
             await self._registry.mark_running(job.experiment_id)
             result = train_job(job, self._settings)
             started_at_utc = result.started_at_utc
-            artifact_provider, artifact_key = save_artifact(
+            upload_artifact(
                 self._settings,
-                job.tenant_id,
-                job.experiment_id,
+                job.artifact_upload_url,
                 result.artifact_bundle,
             )
 
@@ -45,8 +44,8 @@ class JobExecutor:
                     startedAtUtc=result.started_at_utc.astimezone(timezone.utc).isoformat(),
                     completedAtUtc=result.completed_at_utc.astimezone(timezone.utc).isoformat(),
                     modelType=result.model_type,
-                    artifactStorageProvider=artifact_provider,
-                    artifactStorageKey=artifact_key,
+                    artifactStorageProvider=job.artifact_storage_provider,
+                    artifactStorageKey=job.artifact_storage_key,
                     performanceSummaryJson=result.performance_summary_json,
                     warningsJson=result.warnings_json,
                     metrics=result.metrics,

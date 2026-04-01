@@ -28,5 +28,6 @@
     <PackageReference Include="Abp.AspNetCore" Version="9.4.1" />
     <PackageReference Include="Abp.ZeroCore" Version="9.4.1" />
     <PackageReference Include="Abp.AspNetCore.SignalR" Version="9.4.1" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.402" />
   </ItemGroup>
 </Project>

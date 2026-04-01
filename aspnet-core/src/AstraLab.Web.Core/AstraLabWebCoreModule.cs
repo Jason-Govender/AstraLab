@@ -15,7 +15,11 @@ using AstraLab.Configuration;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Services.Datasets.Storage;
 using AstraLab.Services.ML;
+using AstraLab.Services.ML.Storage;
+using AstraLab.Services.Storage;
 using AstraLab.Web.Core.Datasets.Storage;
+using AstraLab.Web.Core.ML;
+using AstraLab.Web.Core.ML.Storage;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using System.IO;
 
@@ -87,15 +91,39 @@ namespace AstraLab
                 ? configuredRawRootPath
                 : Path.GetFullPath(Path.Combine(_env.ContentRootPath, configuredRawRootPath));
 
+            Directory.CreateDirectory(resolvedRawRootPath);
+
             IocManager.IocContainer.Register(
                 Component.For<DatasetStorageOptions>()
                     .Instance(new DatasetStorageOptions
                     {
+                        DefaultProvider = _appConfiguration["DatasetStorage:DefaultProvider"] ?? LocalFileSystemRawDatasetStorage.ProviderName,
                         RawRootPath = resolvedRawRootPath
                     })
                     .LifestyleSingleton(),
-                Component.For<IRawDatasetStorage>()
+                Component.For<ObjectStorageOptions>()
+                    .Instance(new ObjectStorageOptions
+                    {
+                        ServiceUrl = _appConfiguration["ObjectStorage:ServiceUrl"],
+                        Region = _appConfiguration["ObjectStorage:Region"],
+                        AccessKey = _appConfiguration["ObjectStorage:AccessKey"],
+                        SecretKey = _appConfiguration["ObjectStorage:SecretKey"],
+                        ForcePathStyle = ReadBooleanSetting("ObjectStorage:ForcePathStyle", true),
+                        DatasetBucketName = _appConfiguration["ObjectStorage:DatasetBucketName"],
+                        DatasetKeyPrefix = _appConfiguration["ObjectStorage:DatasetKeyPrefix"] ?? "datasets",
+                        MlArtifactBucketName = _appConfiguration["ObjectStorage:MlArtifactBucketName"],
+                        MlArtifactKeyPrefix = _appConfiguration["ObjectStorage:MlArtifactKeyPrefix"] ?? "ml-artifacts",
+                        PresignedUrlTtlSeconds = ReadIntegerSetting("ObjectStorage:PresignedUrlTtlSeconds", 900)
+                    })
+                    .LifestyleSingleton(),
+                Component.For<IRawDatasetStorageProvider>()
                     .ImplementedBy<LocalFileSystemRawDatasetStorage>()
+                    .LifestyleTransient(),
+                Component.For<IRawDatasetStorageProvider>()
+                    .ImplementedBy<S3CompatibleRawDatasetStorage>()
+                    .LifestyleTransient(),
+                Component.For<IRawDatasetStorage>()
+                    .ImplementedBy<CompositeRawDatasetStorage>()
                     .LifestyleTransient());
         }
 
@@ -123,12 +151,38 @@ namespace AstraLab
                         ExecutorBaseUrl = executorBaseUrl,
                         CallbackBaseUrl = callbackBaseUrl,
                         SharedSecret = _appConfiguration["MLExecution:SharedSecret"],
+                        DefaultArtifactStorageProvider = _appConfiguration["MLExecution:DefaultArtifactStorageProvider"] ?? LocalFileSystemMlArtifactStorage.ProviderName,
                         ArtifactRootPath = resolvedArtifactRootPath
                     })
                     .LifestyleSingleton(),
+                Component.For<IMLArtifactStorageProvider>()
+                    .ImplementedBy<LocalFileSystemMlArtifactStorage>()
+                    .LifestyleTransient(),
+                Component.For<IMLArtifactStorageProvider>()
+                    .ImplementedBy<S3CompatibleMlArtifactStorage>()
+                    .LifestyleTransient(),
+                Component.For<IMLArtifactStorage>()
+                    .ImplementedBy<CompositeMlArtifactStorage>()
+                    .LifestyleTransient(),
                 Component.For<IMLJobDispatcher>()
                     .ImplementedBy<MLHttpJobDispatcher>()
                     .LifestyleTransient());
+        }
+
+        private bool ReadBooleanSetting(string key, bool defaultValue)
+        {
+            var configuredValue = _appConfiguration[key];
+            return bool.TryParse(configuredValue, out var parsedValue)
+                ? parsedValue
+                : defaultValue;
+        }
+
+        private int ReadIntegerSetting(string key, int defaultValue)
+        {
+            var configuredValue = _appConfiguration[key];
+            return int.TryParse(configuredValue, out var parsedValue)
+                ? parsedValue
+                : defaultValue;
         }
     }
 }

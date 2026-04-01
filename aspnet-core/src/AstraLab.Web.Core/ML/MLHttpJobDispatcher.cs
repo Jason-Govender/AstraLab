@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Abp.Dependency;
+using AstraLab.Web.Core.ML;
 
 namespace AstraLab.Services.ML
 {
@@ -20,14 +21,19 @@ namespace AstraLab.Services.ML
 
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly MLExecutionOptions _mlExecutionOptions;
+        private readonly MLExecutorFileAccessUrlFactory _fileAccessUrlFactory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MLHttpJobDispatcher"/> class.
         /// </summary>
-        public MLHttpJobDispatcher(IHttpClientFactory httpClientFactory, MLExecutionOptions mlExecutionOptions)
+        public MLHttpJobDispatcher(
+            IHttpClientFactory httpClientFactory,
+            MLExecutionOptions mlExecutionOptions,
+            MLExecutorFileAccessUrlFactory fileAccessUrlFactory)
         {
             _httpClientFactory = httpClientFactory;
             _mlExecutionOptions = mlExecutionOptions;
+            _fileAccessUrlFactory = fileAccessUrlFactory;
         }
 
         /// <summary>
@@ -66,17 +72,21 @@ namespace AstraLab.Services.ML
 
         private MlExecutorJobRequest BuildTransportPayload(DispatchMlExperimentRequest request)
         {
+            var artifactUploadTarget = _fileAccessUrlFactory.CreateArtifactUploadTarget(request.TenantId, request.ExperimentId);
+
             return new MlExecutorJobRequest
             {
                 ExperimentId = request.ExperimentId,
                 TenantId = request.TenantId,
                 DatasetVersionId = request.DatasetVersionId,
                 DatasetFormat = request.DatasetFormat,
-                DatasetStorageProvider = request.DatasetStorageProvider,
-                DatasetStorageKey = request.DatasetStorageKey,
+                DatasetDownloadUrl = _fileAccessUrlFactory.CreateDatasetDownloadUrl(request.DatasetStorageProvider, request.DatasetStorageKey),
                 TaskType = request.TaskType,
                 AlgorithmKey = request.AlgorithmKey,
                 TrainingConfigurationJson = request.TrainingConfigurationJson,
+                ArtifactUploadUrl = artifactUploadTarget.UploadUrl,
+                ArtifactStorageProvider = artifactUploadTarget.StorageProvider,
+                ArtifactStorageKey = artifactUploadTarget.StorageKey,
                 FeatureColumns = request.FeatureColumns
                     .Select(item => new MlExecutorJobColumn
                     {
@@ -141,15 +151,19 @@ namespace AstraLab.Services.ML
 
             public string DatasetFormat { get; set; }
 
-            public string DatasetStorageProvider { get; set; }
-
-            public string DatasetStorageKey { get; set; }
+            public string DatasetDownloadUrl { get; set; }
 
             public string TaskType { get; set; }
 
             public string AlgorithmKey { get; set; }
 
             public string TrainingConfigurationJson { get; set; }
+
+            public string ArtifactUploadUrl { get; set; }
+
+            public string ArtifactStorageProvider { get; set; }
+
+            public string ArtifactStorageKey { get; set; }
 
             public System.Collections.Generic.List<MlExecutorJobColumn> FeatureColumns { get; set; }
 

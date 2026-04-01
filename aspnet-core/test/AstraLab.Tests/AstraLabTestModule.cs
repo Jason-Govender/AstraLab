@@ -13,8 +13,11 @@ using Abp.Zero.EntityFrameworkCore;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Services.Datasets.Storage;
 using AstraLab.Services.ML;
+using AstraLab.Services.ML.Storage;
+using AstraLab.Services.Storage;
 using AstraLab.Tests.DependencyInjection;
 using AstraLab.Web.Core.Datasets.Storage;
+using AstraLab.Web.Core.ML.Storage;
 
 namespace AstraLab.Tests
 {
@@ -74,11 +77,27 @@ namespace AstraLab.Tests
                 Component.For<DatasetStorageOptions>()
                     .Instance(new DatasetStorageOptions
                     {
+                        DefaultProvider = LocalFileSystemRawDatasetStorage.ProviderName,
                         RawRootPath = rawRootPath
                     })
                     .LifestyleSingleton(),
-                Component.For<IRawDatasetStorage>()
+                Component.For<ObjectStorageOptions>()
+                    .Instance(new ObjectStorageOptions
+                    {
+                        ServiceUrl = "http://localhost:9000",
+                        Region = "us-east-1",
+                        AccessKey = "test-access-key",
+                        SecretKey = "test-secret-key",
+                        DatasetBucketName = "datasets",
+                        MlArtifactBucketName = "ml-artifacts",
+                        PresignedUrlTtlSeconds = 900
+                    })
+                    .LifestyleSingleton(),
+                Component.For<IRawDatasetStorageProvider>()
                     .ImplementedBy<LocalFileSystemRawDatasetStorage>()
+                    .LifestyleTransient(),
+                Component.For<IRawDatasetStorage>()
+                    .ImplementedBy<CompositeRawDatasetStorage>()
                     .LifestyleTransient());
         }
 
@@ -94,9 +113,16 @@ namespace AstraLab.Tests
                         ExecutorBaseUrl = "http://localhost:8010",
                         CallbackBaseUrl = "http://localhost:44311",
                         SharedSecret = "test-ml-shared-secret",
+                        DefaultArtifactStorageProvider = LocalFileSystemMlArtifactStorage.ProviderName,
                         ArtifactRootPath = artifactRootPath
                     })
-                    .LifestyleSingleton());
+                    .LifestyleSingleton(),
+                Component.For<IMLArtifactStorageProvider>()
+                    .ImplementedBy<LocalFileSystemMlArtifactStorage>()
+                    .LifestyleTransient(),
+                Component.For<IMLArtifactStorage>()
+                    .ImplementedBy<CompositeMlArtifactStorage>()
+                    .LifestyleTransient());
         }
     }
 }

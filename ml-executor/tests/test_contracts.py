@@ -11,11 +11,13 @@ class JobRequestTests(unittest.TestCase):
                 tenantId=1,
                 datasetVersionId=2,
                 datasetFormat="csv",
-                datasetStorageProvider="local-filesystem",
-                datasetStorageKey="tenants/1/data.csv",
+                datasetDownloadUrl="http://localhost/datasets/1",
                 taskType="classification",
                 algorithmKey="logistic_regression",
                 trainingConfigurationJson="{}",
+                artifactUploadUrl="http://localhost/artifacts/1",
+                artifactStorageProvider="s3-compatible",
+                artifactStorageKey="tenants/1/ml/experiments/1/model.joblib",
                 featureColumns=[
                     {
                         "datasetColumnId": 10,

@@ -1,18 +1,26 @@
 from __future__ import annotations
 
+import io
+
+import httpx
 import joblib
 
 from .settings import ExecutorSettings
 
 
-def save_artifact(
+def upload_artifact(
     settings: ExecutorSettings,
-    tenant_id: int,
-    experiment_id: int,
+    artifact_upload_url: str,
     model_bundle: object,
-) -> tuple[str, str]:
-    artifact_key = f"tenants/{tenant_id}/ml/experiments/{experiment_id}/model.joblib"
-    artifact_path = (settings.artifact_root / artifact_key).resolve()
-    artifact_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model_bundle, artifact_path)
-    return "local-filesystem", artifact_key
+) -> None:
+    buffer = io.BytesIO()
+    joblib.dump(model_bundle, buffer)
+    buffer.seek(0)
+
+    response = httpx.put(
+        artifact_upload_url,
+        content=buffer.getvalue(),
+        headers={"Content-Type": "application/octet-stream"},
+        timeout=settings.http_timeout_seconds,
+    )
+    response.raise_for_status()

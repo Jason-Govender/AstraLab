@@ -7,8 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
-ENV ML_EXECUTOR_DATASET_ROOT=/app/shared/datasets
-ENV ML_EXECUTOR_ARTIFACT_ROOT=/app/shared/ml-artifacts
 ENV ML_EXECUTOR_SHARED_SECRET=AstraLab_ML_Executor_SharedSecret_2026
 ENV ML_EXECUTOR_HTTP_TIMEOUT_SECONDS=30
 
