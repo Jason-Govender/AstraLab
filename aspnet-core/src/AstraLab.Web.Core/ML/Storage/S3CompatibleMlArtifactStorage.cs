@@ -56,7 +56,11 @@ namespace AstraLab.Web.Core.ML.Storage
                     BucketName = _objectStorageOptions.MlArtifactBucketName,
                     Key = S3CompatibleStoragePathBuilder.BuildMlArtifactObjectKey(_objectStorageOptions, request.StorageKey),
                     InputStream = request.Content,
-                    AutoCloseStream = false
+                    AutoCloseStream = false,
+                    // Cloudflare R2 requires the AWS .NET SDK streaming upload integrity
+                    // features to be disabled for PutObject requests.
+                    DisablePayloadSigning = true,
+                    DisableDefaultChecksumValidation = true
                 });
             }
 
