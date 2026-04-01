@@ -10,15 +10,43 @@ services:
       App__ServerRootAddress: "http://localhost:44311/"
       App__ClientRootAddress: "http://localhost:4200/"
       App__CorsOrigins: "http://localhost:4200"
+      DatasetStorage__RawRootPath: "/app/shared/datasets"
+      MLExecution__ExecutorBaseUrl: "http://ml_executor:8010"
+      MLExecution__CallbackBaseUrl: "http://abp_host"
+      MLExecution__SharedSecret: "AstraLab_ML_Executor_SharedSecret_2026"
+      MLExecution__ArtifactRootPath: "/app/shared/ml-artifacts"
       TZ: "America/Toronto"
       Kestrel__Endpoints__Http__Url: "http://+:80"
     ports:
       - "44311:80"
     volumes:
       - "./Host-Logs:/app/App_Data/Logs"
+      - "shared_datasets:/app/shared/datasets"
+      - "shared_ml_artifacts:/app/shared/ml-artifacts"
     restart: always
 
   abp_ng:
     image: abp/ng
     ports:
       - "4200:80"
+
+  ml_executor:
+    build:
+      context: ../../../ml-executor
+      dockerfile: Dockerfile
+    environment:
+      ML_EXECUTOR_DATASET_ROOT: "/app/shared/datasets"
+      ML_EXECUTOR_ARTIFACT_ROOT: "/app/shared/ml-artifacts"
+      ML_EXECUTOR_SHARED_SECRET: "AstraLab_ML_Executor_SharedSecret_2026"
+      ML_EXECUTOR_HTTP_TIMEOUT_SECONDS: "30"
+      TZ: "America/Toronto"
+    ports:
+      - "8010:8010"
+    volumes:
+      - "shared_datasets:/app/shared/datasets"
+      - "shared_ml_artifacts:/app/shared/ml-artifacts"
+    restart: always
+
+volumes:
+  shared_datasets:
+  shared_ml_artifacts:

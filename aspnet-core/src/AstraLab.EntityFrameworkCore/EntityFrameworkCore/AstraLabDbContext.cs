@@ -274,12 +274,22 @@ namespace AstraLab.EntityFrameworkCore
             {
                 entity.ToTable("MLExperiments");
 
+                entity.Property(mlExperiment => mlExperiment.AlgorithmKey)
+                    .IsRequired()
+                    .HasMaxLength(MLExperiment.MaxAlgorithmKeyLength);
+
                 entity.Property(mlExperiment => mlExperiment.TrainingConfigurationJson)
                     .IsRequired()
                     .HasColumnType(MLExperiment.TrainingConfigurationJsonColumnType);
 
                 entity.Property(mlExperiment => mlExperiment.FailureMessage)
                     .HasColumnType(MLExperiment.FailureMessageColumnType);
+
+                entity.Property(mlExperiment => mlExperiment.DispatchErrorMessage)
+                    .HasColumnType(MLExperiment.DispatchErrorMessageColumnType);
+
+                entity.Property(mlExperiment => mlExperiment.WarningsJson)
+                    .HasColumnType(MLExperiment.WarningsJsonColumnType);
 
                 entity.HasOne(mlExperiment => mlExperiment.DatasetVersion)
                     .WithMany(datasetVersion => datasetVersion.MlExperiments)
@@ -292,6 +302,7 @@ namespace AstraLab.EntityFrameworkCore
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasIndex(mlExperiment => new { mlExperiment.TenantId, mlExperiment.DatasetVersionId, mlExperiment.ExecutedAt });
+                entity.HasIndex(mlExperiment => new { mlExperiment.TenantId, mlExperiment.DatasetVersionId, mlExperiment.Status });
                 entity.HasIndex(mlExperiment => mlExperiment.TargetDatasetColumnId);
             });
 
@@ -311,6 +322,9 @@ namespace AstraLab.EntityFrameworkCore
 
                 entity.Property(mlModel => mlModel.PerformanceSummaryJson)
                     .HasColumnType(MLModel.PerformanceSummaryJsonColumnType);
+
+                entity.Property(mlModel => mlModel.WarningsJson)
+                    .HasColumnType(MLModel.WarningsJsonColumnType);
 
                 entity.HasOne(mlModel => mlModel.MLExperiment)
                     .WithOne(mlExperiment => mlExperiment.Model)

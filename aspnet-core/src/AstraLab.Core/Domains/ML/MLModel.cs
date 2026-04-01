@@ -21,6 +21,11 @@ namespace AstraLab.Core.Domains.ML
         public const string PerformanceSummaryJsonColumnType = "text";
 
         /// <summary>
+        /// The database column type used for serialized model warning payloads.
+        /// </summary>
+        public const string WarningsJsonColumnType = "text";
+
+        /// <summary>
         /// Gets or sets the tenant that owns the model metadata.
         /// </summary>
         public int TenantId { get; set; }
@@ -54,6 +59,11 @@ namespace AstraLab.Core.Domains.ML
         /// Gets or sets the optional serialized performance summary payload.
         /// </summary>
         public string PerformanceSummaryJson { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional serialized warning payload.
+        /// </summary>
+        public string WarningsJson { get; set; }
 
         /// <summary>
         /// Gets or sets the persisted model metrics.

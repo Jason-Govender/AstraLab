@@ -14,6 +14,7 @@ using AstraLab.Authentication.JwtBearer;
 using AstraLab.Configuration;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Services.Datasets.Storage;
+using AstraLab.Services.ML;
 using AstraLab.Web.Core.Datasets.Storage;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using System.IO;
@@ -52,6 +53,7 @@ namespace AstraLab
                  );
 
             RegisterDatasetStorage();
+            RegisterMlExecution();
             ConfigureTokenAuth();
         }
 
@@ -94,6 +96,38 @@ namespace AstraLab
                     .LifestyleSingleton(),
                 Component.For<IRawDatasetStorage>()
                     .ImplementedBy<LocalFileSystemRawDatasetStorage>()
+                    .LifestyleTransient());
+        }
+
+        private void RegisterMlExecution()
+        {
+            var configuredArtifactRootPath = _appConfiguration["MLExecution:ArtifactRootPath"];
+            var resolvedArtifactRootPath = Path.IsPathRooted(configuredArtifactRootPath)
+                ? configuredArtifactRootPath
+                : Path.GetFullPath(Path.Combine(_env.ContentRootPath, configuredArtifactRootPath));
+
+            Directory.CreateDirectory(resolvedArtifactRootPath);
+
+            var executorBaseUrl = _appConfiguration["MLExecution:ExecutorBaseUrl"];
+            var callbackBaseUrl = _appConfiguration["MLExecution:CallbackBaseUrl"];
+
+            if (string.IsNullOrWhiteSpace(callbackBaseUrl))
+            {
+                callbackBaseUrl = _appConfiguration["App:ServerRootAddress"];
+            }
+
+            IocManager.IocContainer.Register(
+                Component.For<MLExecutionOptions>()
+                    .Instance(new MLExecutionOptions
+                    {
+                        ExecutorBaseUrl = executorBaseUrl,
+                        CallbackBaseUrl = callbackBaseUrl,
+                        SharedSecret = _appConfiguration["MLExecution:SharedSecret"],
+                        ArtifactRootPath = resolvedArtifactRootPath
+                    })
+                    .LifestyleSingleton(),
+                Component.For<IMLJobDispatcher>()
+                    .ImplementedBy<MLHttpJobDispatcher>()
                     .LifestyleTransient());
         }
     }

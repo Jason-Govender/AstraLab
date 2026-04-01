@@ -23,6 +23,11 @@ namespace AstraLab.Core.Domains.ML
         /// <summary>
         /// The experiment failed.
         /// </summary>
-        Failed = 4
+        Failed = 4,
+
+        /// <summary>
+        /// The experiment was cancelled before execution completed.
+        /// </summary>
+        Cancelled = 5
     }
 }

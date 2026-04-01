@@ -12,6 +12,7 @@ using Abp.Zero.Configuration;
 using Abp.Zero.EntityFrameworkCore;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Services.Datasets.Storage;
+using AstraLab.Services.ML;
 using AstraLab.Tests.DependencyInjection;
 using AstraLab.Web.Core.Datasets.Storage;
 
@@ -44,9 +45,11 @@ namespace AstraLab.Tests
             Configuration.Modules.Zero().LanguageManagement.EnableDbLocalization();
 
             RegisterFakeService<AbpZeroDbMigrator<AstraLabDbContext>>();
+            RegisterFakeService<IMLJobDispatcher>();
 
             Configuration.ReplaceService<IEmailSender, NullEmailSender>(DependencyLifeStyle.Transient);
             RegisterDatasetStorage();
+            RegisterMlExecutionOptions();
         }
 
         public override void Initialize()
@@ -77,6 +80,23 @@ namespace AstraLab.Tests
                 Component.For<IRawDatasetStorage>()
                     .ImplementedBy<LocalFileSystemRawDatasetStorage>()
                     .LifestyleTransient());
+        }
+
+        private void RegisterMlExecutionOptions()
+        {
+            var artifactRootPath = Path.Combine(Path.GetTempPath(), "AstraLab.Tests", "MlArtifacts", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(artifactRootPath);
+
+            IocManager.IocContainer.Register(
+                Component.For<MLExecutionOptions>()
+                    .Instance(new MLExecutionOptions
+                    {
+                        ExecutorBaseUrl = "http://localhost:8010",
+                        CallbackBaseUrl = "http://localhost:44311",
+                        SharedSecret = "test-ml-shared-secret",
+                        ArtifactRootPath = artifactRootPath
+                    })
+                    .LifestyleSingleton());
         }
     }
 }

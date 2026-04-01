@@ -13,13 +13,21 @@ import { DatasetColumnsTable } from "@/components/datasets/shared/datasetColumns
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
 import { DatasetSchemaPreview } from "@/components/datasets/shared/datasetSchemaPreview";
 import { DatasetTransformationHistoryCard } from "@/components/datasets/transformations/datasetTransformationHistoryCard";
+import { MlExperimentWorkspace } from "@/components/datasets/ml/mlExperimentWorkspace";
 import { DatasetExplorationLauncherButton } from "@/components/datasets/exploration/datasetExplorationLauncherButton";
 import { DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE } from "@/constants/datasets";
+import { ML_EXPERIMENT_POLL_INTERVAL_MS } from "@/constants/ml";
+import { MlExperimentStatus } from "@/types/ml";
 import {
   DatasetDetailsProvider,
   useDatasetDetailsActions,
   useDatasetDetailsState,
 } from "@/providers/datasetDetailsProvider";
+import {
+  MlExperimentsProvider,
+  useMlExperimentsActions,
+  useMlExperimentsState,
+} from "@/providers/mlExperimentsProvider";
 import {
   DatasetTransformationHistoryProvider,
   useDatasetTransformationHistoryActions,
@@ -74,6 +82,9 @@ const DatasetDetailsContent = () => {
     isError: isTransformationHistoryError,
     isLoadingHistory,
   } = useDatasetTransformationHistoryState();
+  const { clearExperiments, loadExperiments, refreshExperiments } =
+    useMlExperimentsActions();
+  const { experiments } = useMlExperimentsState();
   const [profileColumnsPage, setProfileColumnsPage] = useState(1);
   const [profileColumnsPageSize, setProfileColumnsPageSize] = useState(
     DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE,
@@ -111,6 +122,19 @@ const DatasetDetailsContent = () => {
   const selectedVersionProfileId = details?.selectedVersion?.profile?.id;
   const selectedVersionDetailsId = details?.selectedVersion?.id;
 
+  const loadMlExperiments = useEffectEvent(() => {
+    if (!selectedVersionDetailsId) {
+      clearExperiments();
+      return;
+    }
+
+    void loadExperiments(selectedVersionDetailsId);
+  });
+
+  useEffect(() => {
+    loadMlExperiments();
+  }, [selectedVersionDetailsId]);
+
   const loadProfileColumns = useEffectEvent(() => {
     if (!selectedVersionDetailsId || !selectedVersionProfileId) {
       clearProfileColumns();
@@ -132,6 +156,26 @@ const DatasetDetailsContent = () => {
     profileColumnsPage,
     profileColumnsPageSize,
   ]);
+
+  const hasActiveMlExperiment = experiments.some(
+    (experiment) =>
+      experiment.status === MlExperimentStatus.Pending ||
+      experiment.status === MlExperimentStatus.Running,
+  );
+
+  useEffect(() => {
+    if (!selectedVersionDetailsId || !hasActiveMlExperiment) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshExperiments();
+    }, ML_EXPERIMENT_POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [hasActiveMlExperiment, refreshExperiments, selectedVersionDetailsId]);
 
   const handleVersionChange = (versionId?: number) => {
     if (!datasetId) {
@@ -297,6 +341,12 @@ const DatasetDetailsContent = () => {
               />
             )}
 
+            <MlExperimentWorkspace
+              datasetVersionId={details.selectedVersion?.id}
+              columns={details.columns}
+              hasRawFile={Boolean(details.selectedVersion?.rawFile)}
+            />
+
             {isTransformationHistoryError && !history ? (
               <DatasetErrorState
                 title="Unable to load transformation history"
@@ -338,9 +388,11 @@ const DatasetDetailsContent = () => {
 
 const DatasetDetailsPage = () => (
   <DatasetTransformationHistoryProvider>
-    <DatasetDetailsProvider>
-      <DatasetDetailsContent />
-    </DatasetDetailsProvider>
+    <MlExperimentsProvider>
+      <DatasetDetailsProvider>
+        <DatasetDetailsContent />
+      </DatasetDetailsProvider>
+    </MlExperimentsProvider>
   </DatasetTransformationHistoryProvider>
 );
 

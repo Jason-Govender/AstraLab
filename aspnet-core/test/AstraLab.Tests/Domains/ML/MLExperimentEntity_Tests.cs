@@ -86,6 +86,8 @@ namespace AstraLab.Tests.Domains.ML
                     DatasetVersionId = datasetVersion.Id,
                     TargetDatasetColumnId = target.Id,
                     Status = MLExperimentStatus.Completed,
+                    TaskType = MLTaskType.Classification,
+                    AlgorithmKey = "random_forest_classifier",
                     TrainingConfigurationJson = "{\"algorithm\":\"random_forest\",\"split\":0.8}",
                     ExecutedAt = executedAt
                 }).Entity;
@@ -185,6 +187,8 @@ namespace AstraLab.Tests.Domains.ML
                 experiment.TargetDatasetColumnId.ShouldBe(targetColumnId);
                 experiment.TargetDatasetColumn.Name.ShouldBe("will_buy");
                 experiment.Status.ShouldBe(MLExperimentStatus.Completed);
+                experiment.TaskType.ShouldBe(MLTaskType.Classification);
+                experiment.AlgorithmKey.ShouldBe("random_forest_classifier");
                 experiment.TrainingConfigurationJson.ShouldBe("{\"algorithm\":\"random_forest\",\"split\":0.8}");
                 experiment.ExecutedAt.ShouldBe(executedAt);
                 experiment.FailureMessage.ShouldBeNull();
@@ -236,6 +240,8 @@ namespace AstraLab.Tests.Domains.ML
                     TenantId = dataset.TenantId,
                     DatasetVersionId = datasetVersion.Id,
                     Status = MLExperimentStatus.Failed,
+                    TaskType = MLTaskType.Regression,
+                    AlgorithmKey = "linear_regression",
                     TrainingConfigurationJson = "{\"algorithm\":\"linear_regression\"}",
                     ExecutedAt = DateTime.UtcNow,
                     FailureMessage = "Training failed because the target column contained only null values."
@@ -306,6 +312,8 @@ namespace AstraLab.Tests.Domains.ML
                     TenantId = 1,
                     DatasetVersionId = datasetVersion.Id,
                     Status = MLExperimentStatus.Completed,
+                    TaskType = MLTaskType.Classification,
+                    AlgorithmKey = "xgboost",
                     TrainingConfigurationJson = "{\"algorithm\":\"xgboost\"}",
                     ExecutedAt = DateTime.UtcNow
                 }).Entity;
@@ -366,6 +374,10 @@ namespace AstraLab.Tests.Domains.ML
                 context.Model.FindEntityType(typeof(MLModelFeatureImportance)).GetIndexes()
                     .Single(index => index.Properties.Select(property => property.Name).SequenceEqual(new[] { nameof(MLModelFeatureImportance.MLModelId), nameof(MLModelFeatureImportance.DatasetColumnId) }))
                     .IsUnique.ShouldBeTrue();
+
+                context.Model.FindEntityType(typeof(MLExperiment)).GetIndexes()
+                    .Single(index => index.Properties.Select(property => property.Name).SequenceEqual(new[] { nameof(MLExperiment.TenantId), nameof(MLExperiment.DatasetVersionId), nameof(MLExperiment.Status) }))
+                    .IsUnique.ShouldBeFalse();
             });
         }
 
