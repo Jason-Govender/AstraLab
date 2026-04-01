@@ -49,13 +49,14 @@ namespace AstraLab.Web.Core.ML.Storage
             ValidateStoreRequest(request);
             ValidateBucketConfiguration();
 
+            using (var uploadStream = await CreateSeekableUploadStreamAsync(request.Content))
             using (var client = S3CompatibleStorageClientFactory.Create(_objectStorageOptions))
             {
                 await client.PutObjectAsync(new Amazon.S3.Model.PutObjectRequest
                 {
                     BucketName = _objectStorageOptions.MlArtifactBucketName,
                     Key = S3CompatibleStoragePathBuilder.BuildMlArtifactObjectKey(_objectStorageOptions, request.StorageKey),
-                    InputStream = request.Content,
+                    InputStream = uploadStream,
                     AutoCloseStream = false,
                     // Cloudflare R2 requires the AWS .NET SDK streaming upload integrity
                     // features to be disabled for PutObject requests.
@@ -105,6 +106,20 @@ namespace AstraLab.Web.Core.ML.Storage
             {
                 await client.DeleteObjectAsync(_objectStorageOptions.MlArtifactBucketName, S3CompatibleStoragePathBuilder.BuildMlArtifactObjectKey(_objectStorageOptions, request.StorageKey));
             }
+        }
+
+        private static async Task<Stream> CreateSeekableUploadStreamAsync(Stream content)
+        {
+            if (content.CanSeek)
+            {
+                content.Position = 0;
+                return content;
+            }
+
+            var bufferedStream = new MemoryStream();
+            await content.CopyToAsync(bufferedStream);
+            bufferedStream.Position = 0;
+            return bufferedStream;
         }
 
         private static void ValidateStoreRequest(StoreMlArtifactRequest request)
