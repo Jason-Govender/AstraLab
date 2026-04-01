@@ -96,3 +96,22 @@ export const formatMlMetricLabel = (metricName: string): string =>
     .split("_")
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
+
+export const buildMlWorkspaceHref = (
+  datasetId?: number,
+  versionId?: number,
+): string => {
+  const searchParams = new URLSearchParams();
+
+  if (datasetId) {
+    searchParams.set("datasetId", String(datasetId));
+  }
+
+  if (versionId) {
+    searchParams.set("versionId", String(versionId));
+  }
+
+  const queryString = searchParams.toString();
+
+  return queryString ? `/ml-workspace?${queryString}` : "/ml-workspace";
+};

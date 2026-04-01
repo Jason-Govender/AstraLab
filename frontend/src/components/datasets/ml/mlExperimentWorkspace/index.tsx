@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -17,7 +17,10 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { ML_ALGORITHM_OPTIONS } from "@/constants/ml";
+import {
+  ML_ALGORITHM_OPTIONS,
+  ML_EXPERIMENT_POLL_INTERVAL_MS,
+} from "@/constants/ml";
 import type { DatasetColumn } from "@/types/datasets";
 import {
   MlExperimentStatus,
@@ -167,8 +170,11 @@ export const MlExperimentWorkspace = ({
   const [form] = Form.useForm<MlExperimentFormValues>();
   const [formErrorMessage, setFormErrorMessage] = useState<string>();
   const {
+    clearExperiments,
     cancelExperiment,
     createExperiment,
+    loadExperiments,
+    refreshExperiments,
     retryExperiment,
     selectExperiment,
   } = useMlExperimentsActions();
@@ -196,6 +202,38 @@ export const MlExperimentWorkspace = ({
   const availableAlgorithmOptions = ML_ALGORITHM_OPTIONS.filter(
     (option) => option.taskType === currentTaskType,
   );
+  const hasActiveMlExperiment = experiments.some(
+    (experiment) =>
+      experiment.status === MlExperimentStatus.Pending ||
+      experiment.status === MlExperimentStatus.Running,
+  );
+
+  const loadVersionExperiments = useEffectEvent(() => {
+    if (!datasetVersionId) {
+      clearExperiments();
+      return;
+    }
+
+    void loadExperiments(datasetVersionId);
+  });
+
+  useEffect(() => {
+    loadVersionExperiments();
+  }, [datasetVersionId]);
+
+  useEffect(() => {
+    if (!datasetVersionId || !hasActiveMlExperiment) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshExperiments();
+    }, ML_EXPERIMENT_POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [datasetVersionId, hasActiveMlExperiment, refreshExperiments]);
 
   useEffect(() => {
     if (availableAlgorithmOptions.length === 0) {

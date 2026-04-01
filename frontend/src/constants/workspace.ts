@@ -28,7 +28,7 @@ export const WORKSPACE_NAVIGATION: WorkspaceNavItem[] = [
     label: "ML Workspace",
     href: "/ml-workspace",
     icon: "mlWorkspace",
-    isAvailable: false,
+    isAvailable: true,
   },
   {
     key: "reports",
