@@ -90,7 +90,11 @@ namespace AstraLab.Web.Core.Datasets.Storage
                             BucketName = _objectStorageOptions.DatasetBucketName,
                             Key = objectKey,
                             InputStream = readStream,
-                            AutoCloseStream = false
+                            AutoCloseStream = false,
+                            // Cloudflare R2 requires the AWS .NET SDK streaming upload integrity
+                            // features to be disabled for PutObject requests.
+                            DisablePayloadSigning = true,
+                            DisableDefaultChecksumValidation = true
                         });
                     }
                 }
