@@ -3,6 +3,7 @@ using Abp.Zero.EntityFrameworkCore;
 using AstraLab.Authorization.Roles;
 using AstraLab.Authorization.Users;
 using AstraLab.Core.Domains.Datasets;
+using AstraLab.Core.Domains.ML;
 using AstraLab.MultiTenancy;
 
 namespace AstraLab.EntityFrameworkCore
@@ -45,6 +46,31 @@ namespace AstraLab.EntityFrameworkCore
         /// Gets or sets the persisted transformation history rows for dataset version processing.
         /// </summary>
         public DbSet<DatasetTransformation> DatasetTransformations { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted machine learning experiment runs.
+        /// </summary>
+        public DbSet<MLExperiment> MLExperiments { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted trained model metadata rows.
+        /// </summary>
+        public DbSet<MLModel> MLModels { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted experiment feature selection rows.
+        /// </summary>
+        public DbSet<MLExperimentFeature> MLExperimentFeatures { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted model metric rows.
+        /// </summary>
+        public DbSet<MLModelMetric> MLModelMetrics { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted model feature importance rows.
+        /// </summary>
+        public DbSet<MLModelFeatureImportance> MLModelFeatureImportances { get; set; }
 
         public AstraLabDbContext(DbContextOptions<AstraLabDbContext> options)
             : base(options)
@@ -242,6 +268,122 @@ namespace AstraLab.EntityFrameworkCore
                     .IsUnique();
 
                 entity.HasIndex(datasetTransformation => new { datasetTransformation.TenantId, datasetTransformation.ExecutedAt });
+            });
+
+            modelBuilder.Entity<MLExperiment>(entity =>
+            {
+                entity.ToTable("MLExperiments");
+
+                entity.Property(mlExperiment => mlExperiment.TrainingConfigurationJson)
+                    .IsRequired()
+                    .HasColumnType(MLExperiment.TrainingConfigurationJsonColumnType);
+
+                entity.Property(mlExperiment => mlExperiment.FailureMessage)
+                    .HasColumnType(MLExperiment.FailureMessageColumnType);
+
+                entity.HasOne(mlExperiment => mlExperiment.DatasetVersion)
+                    .WithMany(datasetVersion => datasetVersion.MlExperiments)
+                    .HasForeignKey(mlExperiment => mlExperiment.DatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(mlExperiment => mlExperiment.TargetDatasetColumn)
+                    .WithMany()
+                    .HasForeignKey(mlExperiment => mlExperiment.TargetDatasetColumnId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(mlExperiment => new { mlExperiment.TenantId, mlExperiment.DatasetVersionId, mlExperiment.ExecutedAt });
+                entity.HasIndex(mlExperiment => mlExperiment.TargetDatasetColumnId);
+            });
+
+            modelBuilder.Entity<MLModel>(entity =>
+            {
+                entity.ToTable("MLModels");
+
+                entity.Property(mlModel => mlModel.ModelType)
+                    .IsRequired()
+                    .HasMaxLength(MLModel.MaxModelTypeLength);
+
+                entity.Property(mlModel => mlModel.ArtifactStorageProvider)
+                    .HasMaxLength(DatasetFile.MaxStorageProviderLength);
+
+                entity.Property(mlModel => mlModel.ArtifactStorageKey)
+                    .HasMaxLength(DatasetFile.MaxStorageKeyLength);
+
+                entity.Property(mlModel => mlModel.PerformanceSummaryJson)
+                    .HasColumnType(MLModel.PerformanceSummaryJsonColumnType);
+
+                entity.HasOne(mlModel => mlModel.MLExperiment)
+                    .WithOne(mlExperiment => mlExperiment.Model)
+                    .HasForeignKey<MLModel>(mlModel => mlModel.MLExperimentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(mlModel => mlModel.MLExperimentId)
+                    .IsUnique();
+
+                entity.HasIndex(mlModel => new { mlModel.ArtifactStorageProvider, mlModel.ArtifactStorageKey })
+                    .IsUnique();
+            });
+
+            modelBuilder.Entity<MLExperimentFeature>(entity =>
+            {
+                entity.ToTable("MLExperimentFeatures");
+
+                entity.HasOne(mlExperimentFeature => mlExperimentFeature.MLExperiment)
+                    .WithMany(mlExperiment => mlExperiment.SelectedFeatures)
+                    .HasForeignKey(mlExperimentFeature => mlExperimentFeature.MLExperimentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(mlExperimentFeature => mlExperimentFeature.DatasetColumn)
+                    .WithMany()
+                    .HasForeignKey(mlExperimentFeature => mlExperimentFeature.DatasetColumnId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(mlExperimentFeature => new { mlExperimentFeature.MLExperimentId, mlExperimentFeature.DatasetColumnId })
+                    .IsUnique();
+
+                entity.HasIndex(mlExperimentFeature => new { mlExperimentFeature.MLExperimentId, mlExperimentFeature.Ordinal })
+                    .IsUnique();
+            });
+
+            modelBuilder.Entity<MLModelMetric>(entity =>
+            {
+                entity.ToTable("MLModelMetrics");
+
+                entity.Property(mlModelMetric => mlModelMetric.MetricName)
+                    .IsRequired()
+                    .HasMaxLength(MLModelMetric.MaxMetricNameLength);
+
+                entity.Property(mlModelMetric => mlModelMetric.MetricValue)
+                    .HasPrecision(18, 6);
+
+                entity.HasOne(mlModelMetric => mlModelMetric.MLModel)
+                    .WithMany(mlModel => mlModel.Metrics)
+                    .HasForeignKey(mlModelMetric => mlModelMetric.MLModelId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(mlModelMetric => new { mlModelMetric.MLModelId, mlModelMetric.MetricName })
+                    .IsUnique();
+            });
+
+            modelBuilder.Entity<MLModelFeatureImportance>(entity =>
+            {
+                entity.ToTable("MLModelFeatureImportances");
+
+                entity.Property(mlModelFeatureImportance => mlModelFeatureImportance.ImportanceScore)
+                    .HasPrecision(18, 6);
+
+                entity.HasOne(mlModelFeatureImportance => mlModelFeatureImportance.MLModel)
+                    .WithMany(mlModel => mlModel.FeatureImportances)
+                    .HasForeignKey(mlModelFeatureImportance => mlModelFeatureImportance.MLModelId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(mlModelFeatureImportance => mlModelFeatureImportance.DatasetColumn)
+                    .WithMany()
+                    .HasForeignKey(mlModelFeatureImportance => mlModelFeatureImportance.DatasetColumnId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(mlModelFeatureImportance => new { mlModelFeatureImportance.MLModelId, mlModelFeatureImportance.DatasetColumnId })
+                    .IsUnique();
             });
         }
     }

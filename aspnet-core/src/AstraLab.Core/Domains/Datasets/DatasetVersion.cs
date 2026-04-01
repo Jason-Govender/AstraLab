@@ -1,6 +1,7 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
 using System.Collections.Generic;
+using AstraLab.Core.Domains.ML;
 
 namespace AstraLab.Core.Domains.Datasets
 {
@@ -93,5 +94,10 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the transformation record that produced this dataset version when the version is processed output.
         /// </summary>
         public DatasetTransformation ProducedByTransformation { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted machine learning experiment runs for this dataset version.
+        /// </summary>
+        public ICollection<MLExperiment> MlExperiments { get; set; } = new List<MLExperiment>();
     }
 }
