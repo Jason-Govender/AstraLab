@@ -21,7 +21,7 @@ export const WORKSPACE_NAVIGATION: WorkspaceNavItem[] = [
     label: "AI Assistant",
     href: "/ai-assistant",
     icon: "assistant",
-    isAvailable: false,
+    isAvailable: true,
   },
   {
     key: "ml-workspace",

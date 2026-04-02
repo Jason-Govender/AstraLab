@@ -164,6 +164,12 @@ namespace AstraLab.Services.AI
 
             foreach (var outputItem in outputElement.EnumerateArray())
             {
+                var outputItemType = TryReadString(outputItem, "type");
+                if (!string.Equals(outputItemType, "message", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 if (!outputItem.TryGetProperty("content", out var contentElement) || contentElement.ValueKind != JsonValueKind.Array)
                 {
                     continue;
@@ -171,6 +177,12 @@ namespace AstraLab.Services.AI
 
                 foreach (var contentItem in contentElement.EnumerateArray())
                 {
+                    var contentItemType = TryReadString(contentItem, "type");
+                    if (!string.Equals(contentItemType, "output_text", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     var text = TryReadString(contentItem, "text");
                     if (!string.IsNullOrWhiteSpace(text))
                     {
@@ -248,6 +260,7 @@ namespace AstraLab.Services.AI
 
             public IReadOnlyList<GroqInputMessage> Input { get; set; }
 
+            [JsonPropertyName("max_output_tokens")]
             public int MaxOutputTokens { get; set; }
 
             public GroqReasoningRequest Reasoning { get; set; }
