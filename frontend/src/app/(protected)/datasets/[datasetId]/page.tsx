@@ -7,8 +7,10 @@ import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetP
 import { DatasetProfileColumnsTable } from "@/components/datasets/shared/datasetProfileColumnsTable";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import { DatasetOverviewCard } from "@/components/datasets/details/datasetOverviewCard";
+import { DatasetAutomaticInsightCard } from "@/components/datasets/details/datasetAutomaticInsightCard";
 import { DatasetVersionSelector } from "@/components/datasets/details/datasetVersionSelector";
 import { RawFileSummaryCard } from "@/components/datasets/details/rawFileSummaryCard";
+import { DatasetAiAssistantLauncherButton } from "@/components/datasets/ai/datasetAiAssistantLauncherButton";
 import { DatasetColumnsTable } from "@/components/datasets/shared/datasetColumnsTable";
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
 import { DatasetSchemaPreview } from "@/components/datasets/shared/datasetSchemaPreview";
@@ -16,6 +18,11 @@ import { DatasetTransformationHistoryCard } from "@/components/datasets/transfor
 import { MlWorkspaceLauncherCard } from "@/components/datasets/ml/mlWorkspaceLauncherCard";
 import { DatasetExplorationLauncherButton } from "@/components/datasets/exploration/datasetExplorationLauncherButton";
 import { DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE } from "@/constants/datasets";
+import {
+  DatasetAutoInsightProvider,
+  useDatasetAutoInsightActions,
+  useDatasetAutoInsightState,
+} from "@/providers/datasetAutoInsightProvider";
 import {
   DatasetDetailsProvider,
   useDatasetDetailsActions,
@@ -65,6 +72,17 @@ const DatasetDetailsContent = () => {
     profileColumnsErrorMessage,
     profileColumnsTotalCount,
   } = useDatasetDetailsState();
+  const {
+    clearLatestAutomaticInsight,
+    getLatestAutomaticInsight,
+    refreshLatestAutomaticInsight,
+  } = useDatasetAutoInsightActions();
+  const {
+    errorMessage: autoInsightErrorMessage,
+    isError: isAutoInsightError,
+    isLoading: isLoadingAutoInsight,
+    latestInsight,
+  } = useDatasetAutoInsightState();
   const {
     getTransformationHistory,
     refreshTransformationHistory,
@@ -133,6 +151,19 @@ const DatasetDetailsContent = () => {
     profileColumnsPage,
     profileColumnsPageSize,
   ]);
+
+  const loadAutomaticInsight = useEffectEvent(() => {
+    if (!selectedVersionDetailsId) {
+      clearLatestAutomaticInsight();
+      return;
+    }
+
+    void getLatestAutomaticInsight(selectedVersionDetailsId);
+  });
+
+  useEffect(() => {
+    loadAutomaticInsight();
+  }, [selectedVersionDetailsId]);
 
   const handleVersionChange = (versionId?: number) => {
     if (!datasetId) {
@@ -208,6 +239,11 @@ const DatasetDetailsContent = () => {
               versionId={effectiveSelectedVersionId}
               size="large"
             />
+            <DatasetAiAssistantLauncherButton
+              datasetId={datasetId}
+              versionId={effectiveSelectedVersionId}
+              size="large"
+            />
             <Button
               type="primary"
               size="large"
@@ -257,6 +293,13 @@ const DatasetDetailsContent = () => {
               isLoading={isLoadingDetails}
               title="Profiling Summary"
               emptyDescription="Profiling insights will appear here when they are available for the selected version."
+            />
+            <DatasetAutomaticInsightCard
+              insight={latestInsight}
+              isLoading={isLoadingAutoInsight}
+              isError={isAutoInsightError}
+              errorMessage={autoInsightErrorMessage}
+              onRetry={() => void refreshLatestAutomaticInsight()}
             />
             <DatasetSchemaPreview
               schemaJson={details.selectedVersion?.schemaJson}
@@ -344,9 +387,11 @@ const DatasetDetailsContent = () => {
 
 const DatasetDetailsPage = () => (
   <DatasetTransformationHistoryProvider>
-    <DatasetDetailsProvider>
-      <DatasetDetailsContent />
-    </DatasetDetailsProvider>
+    <DatasetAutoInsightProvider>
+      <DatasetDetailsProvider>
+        <DatasetDetailsContent />
+      </DatasetDetailsProvider>
+    </DatasetAutoInsightProvider>
   </DatasetTransformationHistoryProvider>
 );
 

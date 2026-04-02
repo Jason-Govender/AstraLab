@@ -41,6 +41,11 @@ export const useStyles = createStyles(({ css, token }) => ({
     color: ${token.colorTextSecondary};
   `,
 
+  selectInput: css`
+    width: 100%;
+    margin-top: 8px;
+  `,
+
   loadingCard: css`
     &.ant-card {
       min-height: 280px;

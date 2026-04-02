@@ -1580,6 +1580,128 @@ namespace AstraLab.Migrations
                     b.ToTable("AbpUsers");
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.AI.AIConversation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("DatasetId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastInteractionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("OwnerUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DatasetId");
+
+                    b.HasIndex("TenantId", "DatasetId", "OwnerUserId", "LastInteractionTime");
+
+                    b.ToTable("AIConversations", (string)null);
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.AI.AIResponse", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AIConversationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DatasetTransformationId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("DatasetVersionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("DeleterUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletionTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastModificationTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastModifierUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("MLExperimentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResponseContent")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ResponseType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserQuery")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DatasetTransformationId");
+
+                    b.HasIndex("DatasetVersionId");
+
+                    b.HasIndex("MLExperimentId");
+
+                    b.HasIndex("AIConversationId", "CreationTime");
+
+                    b.HasIndex("TenantId", "DatasetVersionId", "ResponseType", "CreationTime");
+
+                    b.ToTable("AIResponses", (string)null);
+                });
+
             modelBuilder.Entity("AstraLab.Core.Domains.Datasets.Dataset", b =>
                 {
                     b.Property<long>("Id")
@@ -2645,6 +2767,50 @@ namespace AstraLab.Migrations
                     b.Navigation("LastModifierUser");
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.AI.AIConversation", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.Datasets.Dataset", "Dataset")
+                        .WithMany("AIConversations")
+                        .HasForeignKey("DatasetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Dataset");
+                });
+
+            modelBuilder.Entity("AstraLab.Core.Domains.AI.AIResponse", b =>
+                {
+                    b.HasOne("AstraLab.Core.Domains.AI.AIConversation", "AIConversation")
+                        .WithMany("Responses")
+                        .HasForeignKey("AIConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetTransformation", "DatasetTransformation")
+                        .WithMany("AIResponses")
+                        .HasForeignKey("DatasetTransformationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AstraLab.Core.Domains.Datasets.DatasetVersion", "DatasetVersion")
+                        .WithMany("AIResponses")
+                        .HasForeignKey("DatasetVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AstraLab.Core.Domains.ML.MLExperiment", "MLExperiment")
+                        .WithMany("AIResponses")
+                        .HasForeignKey("MLExperimentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AIConversation");
+
+                    b.Navigation("DatasetTransformation");
+
+                    b.Navigation("DatasetVersion");
+
+                    b.Navigation("MLExperiment");
+                });
+
             modelBuilder.Entity("AstraLab.Core.Domains.Datasets.Dataset", b =>
                 {
                     b.HasOne("AstraLab.Core.Domains.Datasets.DatasetVersion", "CurrentVersion")
@@ -2919,8 +3085,15 @@ namespace AstraLab.Migrations
                     b.Navigation("Tokens");
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.AI.AIConversation", b =>
+                {
+                    b.Navigation("Responses");
+                });
+
             modelBuilder.Entity("AstraLab.Core.Domains.Datasets.Dataset", b =>
                 {
+                    b.Navigation("AIConversations");
+
                     b.Navigation("Versions");
                 });
 
@@ -2934,8 +3107,15 @@ namespace AstraLab.Migrations
                     b.Navigation("ColumnProfiles");
                 });
 
+            modelBuilder.Entity("AstraLab.Core.Domains.Datasets.DatasetTransformation", b =>
+                {
+                    b.Navigation("AIResponses");
+                });
+
             modelBuilder.Entity("AstraLab.Core.Domains.Datasets.DatasetVersion", b =>
                 {
+                    b.Navigation("AIResponses");
+
                     b.Navigation("Columns");
 
                     b.Navigation("MlExperiments");
@@ -2951,6 +3131,8 @@ namespace AstraLab.Migrations
 
             modelBuilder.Entity("AstraLab.Core.Domains.ML.MLExperiment", b =>
                 {
+                    b.Navigation("AIResponses");
+
                     b.Navigation("Model");
 
                     b.Navigation("SelectedFeatures");

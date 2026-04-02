@@ -1,5 +1,6 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
+using AstraLab.Core.Domains.AI;
 using System.Collections.Generic;
 
 namespace AstraLab.Core.Domains.Datasets
@@ -73,5 +74,10 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets all versions recorded for the dataset.
         /// </summary>
         public ICollection<DatasetVersion> Versions { get; set; } = new List<DatasetVersion>();
+
+        /// <summary>
+        /// Gets or sets the persisted AI conversations scoped to the dataset.
+        /// </summary>
+        public ICollection<AIConversation> AIConversations { get; set; } = new List<AIConversation>();
     }
 }

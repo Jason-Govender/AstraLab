@@ -14,6 +14,7 @@ using AstraLab.Authentication.JwtBearer;
 using AstraLab.Configuration;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Services.Datasets.Storage;
+using AstraLab.Services.AI;
 using AstraLab.Services.ML;
 using AstraLab.Services.ML.Storage;
 using AstraLab.Services.Storage;
@@ -58,6 +59,7 @@ namespace AstraLab
 
             RegisterDatasetStorage();
             RegisterMlExecution();
+            RegisterAiGeneration();
             ConfigureTokenAuth();
         }
 
@@ -167,6 +169,22 @@ namespace AstraLab
                 Component.For<IMLJobDispatcher>()
                     .ImplementedBy<MLHttpJobDispatcher>()
                     .LifestyleTransient());
+        }
+
+        private void RegisterAiGeneration()
+        {
+            IocManager.IocContainer.Register(
+                Component.For<GroqAiOptions>()
+                    .Instance(new GroqAiOptions
+                    {
+                        BaseUrl = _appConfiguration["AI:Groq:BaseUrl"] ?? "https://api.groq.com/openai/v1/responses",
+                        ApiKey = _appConfiguration["AI:Groq:ApiKey"],
+                        Model = _appConfiguration["AI:Groq:Model"],
+                        TimeoutSeconds = ReadIntegerSetting("AI:Groq:TimeoutSeconds", 60),
+                        MaxOutputTokens = ReadIntegerSetting("AI:Groq:MaxOutputTokens", 800),
+                        ReasoningEffort = _appConfiguration["AI:Groq:ReasoningEffort"]
+                    })
+                    .LifestyleSingleton());
         }
 
         private bool ReadBooleanSetting(string key, bool defaultValue)

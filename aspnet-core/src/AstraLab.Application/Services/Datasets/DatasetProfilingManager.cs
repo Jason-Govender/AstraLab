@@ -1,9 +1,11 @@
 using System.Linq;
 using System.Threading.Tasks;
+using Abp.BackgroundJobs;
 using Abp.Dependency;
 using Abp.Domain.Repositories;
 using Abp.Runtime.Session;
 using Abp.UI;
+using AstraLab.Services.AI;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Services.Datasets.Dto;
 using AstraLab.Services.Datasets.Profiling;
@@ -24,6 +26,7 @@ namespace AstraLab.Services.Datasets
         private readonly IDatasetOwnershipAccessChecker _datasetOwnershipAccessChecker;
         private readonly IRawDatasetStorage _rawDatasetStorage;
         private readonly IDatasetProfiler _datasetProfiler;
+        private readonly IBackgroundJobManager _backgroundJobManager;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatasetProfilingManager"/> class.
@@ -35,7 +38,8 @@ namespace AstraLab.Services.Datasets
             IRepository<DatasetColumnProfile, long> datasetColumnProfileRepository,
             IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker,
             IRawDatasetStorage rawDatasetStorage,
-            IDatasetProfiler datasetProfiler)
+            IDatasetProfiler datasetProfiler,
+            IBackgroundJobManager backgroundJobManager)
         {
             _datasetRepository = datasetRepository;
             _datasetColumnRepository = datasetColumnRepository;
@@ -44,6 +48,7 @@ namespace AstraLab.Services.Datasets
             _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
             _rawDatasetStorage = rawDatasetStorage;
             _datasetProfiler = datasetProfiler;
+            _backgroundJobManager = backgroundJobManager;
         }
 
         /// <summary>
@@ -93,12 +98,13 @@ namespace AstraLab.Services.Datasets
                     });
                 }
 
-                await ReplaceCurrentProfileSnapshotAsync(tenantId, datasetVersion, datasetColumns, profilingResult);
+                var datasetProfileId = await ReplaceCurrentProfileSnapshotAsync(tenantId, datasetVersion, datasetColumns, profilingResult);
 
                 dataset.Status = DatasetStatus.Ready;
                 datasetVersion.Status = DatasetVersionStatus.Active;
                 datasetVersion.RowCount = ToIntValue(profilingResult.RowCount);
                 await CurrentUnitOfWork.SaveChangesAsync();
+                await TryEnqueueAutomaticInsightJobAsync(datasetVersion.Id, datasetProfileId, tenantId, ownerUserId);
 
                 return await BuildDatasetProfileDtoAsync(datasetVersion.Id, tenantId);
             }
@@ -124,7 +130,7 @@ namespace AstraLab.Services.Datasets
         /// <summary>
         /// Replaces the current persisted profiling snapshot and synchronizes legacy summary fields.
         /// </summary>
-        private async Task ReplaceCurrentProfileSnapshotAsync(
+        private async Task<long> ReplaceCurrentProfileSnapshotAsync(
             int tenantId,
             DatasetVersion datasetVersion,
             System.Collections.Generic.IReadOnlyList<DatasetColumn> datasetColumns,
@@ -187,6 +193,8 @@ namespace AstraLab.Services.Datasets
                     StatisticsJson = profiledColumn.StatisticsJson
                 });
             }
+
+            return datasetProfile.Id;
         }
 
         private async Task<DatasetProfileDto> BuildDatasetProfileDtoAsync(long datasetVersionId, int tenantId)
@@ -231,6 +239,32 @@ namespace AstraLab.Services.Datasets
         private static int ToIntValue(long value)
         {
             return value > int.MaxValue ? int.MaxValue : (int)value;
+        }
+
+        /// <summary>
+        /// Enqueues best-effort automatic AI insight generation without blocking profiling success.
+        /// </summary>
+        private async Task TryEnqueueAutomaticInsightJobAsync(
+            long datasetVersionId,
+            long datasetProfileId,
+            int tenantId,
+            long ownerUserId)
+        {
+            try
+            {
+                await _backgroundJobManager.EnqueueAsync<GenerateAutomaticDatasetInsightJob, GenerateAutomaticDatasetInsightJobArgs>(
+                    new GenerateAutomaticDatasetInsightJobArgs
+                    {
+                        DatasetVersionId = datasetVersionId,
+                        DatasetProfileId = datasetProfileId,
+                        TenantId = tenantId,
+                        OwnerUserId = ownerUserId
+                    });
+            }
+            catch (System.Exception exception)
+            {
+                Logger.Warn("Automatic dataset insight job enqueue failed after profiling completed.", exception);
+            }
         }
     }
 }

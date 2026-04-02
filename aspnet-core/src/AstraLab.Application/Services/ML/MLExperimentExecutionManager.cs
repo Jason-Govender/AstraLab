@@ -1,11 +1,13 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Abp.BackgroundJobs;
 using Abp.Dependency;
 using Abp.Domain.Repositories;
 using Abp.UI;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Core.Domains.ML;
+using AstraLab.Services.AI;
 using AstraLab.Services.ML.Dto;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +23,7 @@ namespace AstraLab.Services.ML
         private readonly IRepository<MLModelMetric, long> _mlModelMetricRepository;
         private readonly IRepository<MLModelFeatureImportance, long> _mlModelFeatureImportanceRepository;
         private readonly IRepository<DatasetColumn, long> _datasetColumnRepository;
+        private readonly IBackgroundJobManager _backgroundJobManager;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MLExperimentExecutionManager"/> class.
@@ -30,13 +33,15 @@ namespace AstraLab.Services.ML
             IRepository<MLModel, long> mlModelRepository,
             IRepository<MLModelMetric, long> mlModelMetricRepository,
             IRepository<MLModelFeatureImportance, long> mlModelFeatureImportanceRepository,
-            IRepository<DatasetColumn, long> datasetColumnRepository)
+            IRepository<DatasetColumn, long> datasetColumnRepository,
+            IBackgroundJobManager backgroundJobManager)
         {
             _mlExperimentRepository = mlExperimentRepository;
             _mlModelRepository = mlModelRepository;
             _mlModelMetricRepository = mlModelMetricRepository;
             _mlModelFeatureImportanceRepository = mlModelFeatureImportanceRepository;
             _datasetColumnRepository = datasetColumnRepository;
+            _backgroundJobManager = backgroundJobManager;
         }
 
         /// <summary>
@@ -47,6 +52,8 @@ namespace AstraLab.Services.ML
             ValidateCompletionRequest(input);
 
             var experiment = await _mlExperimentRepository.GetAll()
+                .Include(item => item.DatasetVersion)
+                    .ThenInclude(item => item.Dataset)
                 .Include(item => item.Model)
                     .ThenInclude(item => item.Metrics)
                 .Include(item => item.Model)
@@ -121,6 +128,7 @@ namespace AstraLab.Services.ML
             experiment.WarningsJson = input.WarningsJson;
 
             await CurrentUnitOfWork.SaveChangesAsync();
+            await TryEnqueueAutomaticInsightJobAsync(experiment);
         }
 
         /// <summary>
@@ -217,6 +225,33 @@ namespace AstraLab.Services.ML
             if (string.IsNullOrWhiteSpace(input.FailureMessage))
             {
                 throw new UserFriendlyException("A failure message is required when an ML experiment fails.");
+            }
+        }
+
+        /// <summary>
+        /// Enqueues best-effort automatic AI insight generation without blocking ML completion success.
+        /// </summary>
+        private async Task TryEnqueueAutomaticInsightJobAsync(MLExperiment experiment)
+        {
+            if (experiment.Status != MLExperimentStatus.Completed || experiment.Model == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _backgroundJobManager.EnqueueAsync<GenerateAutomaticExperimentInsightJob, GenerateAutomaticExperimentInsightJobArgs>(
+                    new GenerateAutomaticExperimentInsightJobArgs
+                    {
+                        MLExperimentId = experiment.Id,
+                        DatasetVersionId = experiment.DatasetVersionId,
+                        TenantId = experiment.TenantId,
+                        OwnerUserId = experiment.DatasetVersion.Dataset.OwnerUserId
+                    });
+            }
+            catch (Exception exception)
+            {
+                Logger.Warn("Automatic ML experiment insight job enqueue failed after experiment completion.", exception);
             }
         }
     }

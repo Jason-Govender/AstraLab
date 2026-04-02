@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
+using AstraLab.Core.Domains.AI;
 using AstraLab.Core.Domains.Datasets;
 
 namespace AstraLab.Core.Domains.ML
@@ -120,5 +121,10 @@ namespace AstraLab.Core.Domains.ML
         /// Gets or sets the optional trained model output for the experiment.
         /// </summary>
         public MLModel Model { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted AI responses optionally linked to this experiment.
+        /// </summary>
+        public ICollection<AIResponse> AIResponses { get; set; } = new List<AIResponse>();
     }
 }
