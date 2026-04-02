@@ -1,8 +1,8 @@
 import { Card, Typography } from "antd";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useStyles } from "../style";
 
 const { Paragraph, Text, Title } = Typography;
-
 interface Metric {
   label: string;
   value: string;
@@ -17,7 +17,9 @@ export function LoginHero({ metrics }: LoginHeroProps) {
 
   return (
     <div className={styles.hero}>
-      <Text className={styles.brand}>AstraLab</Text>
+      <div className={styles.brand}>
+        <BrandLogo variant="auth" priority />
+      </div>
       <Title level={1} className={styles.heroTitle}>
         Turn raw data into
         <span className={styles.heroAccent}> intelligent insight</span>

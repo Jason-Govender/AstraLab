@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AstraLab Frontend
 
-## Getting Started
+## Overview
 
-First, run the development server:
+The AstraLab frontend is the user-facing workspace for dataset ingestion, profiling, exploration, AI assistance, ML experimentation, analytics dashboards, and stakeholder reporting. It is built as a Next.js App Router application and serves as the main interaction layer for the platform.
+
+## Stack
+
+- Next.js App Router
+- React
+- TypeScript
+- Ant Design
+- `antd-style`
+
+## Key Routes and Workspaces
+
+- `/login` and `/register` for authentication
+- `/dashboard` for the executive analytics summary
+- `/datasets` for dataset management
+- `/datasets/upload` for dataset ingestion
+- `/datasets/[datasetId]` for dataset details and profiling context
+- `/datasets/[datasetId]/explore` for dataset exploration
+- `/datasets/[datasetId]/transform` for transformation workflows
+- `/datasets/[datasetId]/assistant` and `/ai-assistant` for AI-assisted analysis
+- `/ml-workspace` for experiment management and ML insights
+- `/reports` for report generation, export actions, and stored stakeholder outputs
+
+## Environment Variables
+
+Create a local `.env` file based on `.env.example`.
+
+Required variables:
+
+- `NEXT_PUBLIC_API_BASE_URL`
+  - Public backend base URL used by the browser-facing client.
+- `BACKEND_INTERNAL_URL`
+  - Internal backend base URL used for server-side requests when needed.
+
+Example values are provided in [`./.env.example`](./.env.example).
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The default local frontend URL is typically [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Build the application:
 
-## Learn More
+```bash
+npm run build
+```
 
-To learn more about Next.js, take a look at the following resources:
+Start the production server:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture Notes
 
-## Deploy on Vercel
+The frontend uses App Router route groups under `src/app` to separate authentication routes from protected workspace routes. Shared UI is organized under `src/components`, shared domain and API contracts live under `src/types` and `src/services`, and route-scoped state is managed with provider-driven patterns under `src/providers`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This keeps page files thin while allowing dashboard, reports, AI, dataset, and ML workspaces to manage their own focused state and actions cleanly.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Related Documentation
+
+- [Root README](../README.md)
+- [Backend README](../aspnet-core/README.md)
+- [ML Executor README](../ml-executor/README.md)

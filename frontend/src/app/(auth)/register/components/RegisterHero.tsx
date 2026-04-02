@@ -1,7 +1,8 @@
 import { Card, Typography } from "antd";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useStyles } from "../style";
 
-const { Paragraph, Text, Title } = Typography;
+const { Paragraph, Title } = Typography;
 
 interface RegisterHeroProps {
   benefits: string[];
@@ -12,7 +13,9 @@ export function RegisterHero({ benefits }: RegisterHeroProps) {
 
   return (
     <div className={styles.hero}>
-      <Text className={styles.brand}>AstraLab</Text>
+      <div className={styles.brand}>
+        <BrandLogo variant="auth" priority />
+      </div>
       <Title level={1} className={styles.heroTitle}>
         Build your data
         <span className={styles.heroAccent}> intelligence workspace</span>

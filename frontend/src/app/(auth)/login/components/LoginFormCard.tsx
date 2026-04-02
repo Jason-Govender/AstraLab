@@ -9,7 +9,6 @@ interface LoginFormCardProps {
   successMessage?: string;
   isSubmitting: boolean;
   onSubmit: (values: LoginFormValues) => Promise<void>;
-  onForgotPassword: () => void;
   onRegister: () => void;
 }
 
@@ -18,7 +17,6 @@ export function LoginFormCard({
   successMessage,
   isSubmitting,
   onSubmit,
-  onForgotPassword,
   onRegister,
 }: LoginFormCardProps) {
   const { styles } = useStyles();
@@ -105,16 +103,6 @@ export function LoginFormCard({
               className={styles.input}
             />
           </Form.Item>
-
-        <div className={styles.actionsRow}>
-          <Button
-            type="link"
-            className={styles.linkButton}
-            onClick={onForgotPassword}
-          >
-            Forgot password?
-          </Button>
-        </div>
 
         <Button
           htmlType="submit"

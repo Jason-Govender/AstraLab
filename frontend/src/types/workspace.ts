@@ -5,8 +5,7 @@ export type WorkspaceIconKey =
   | "datasets"
   | "assistant"
   | "mlWorkspace"
-  | "reports"
-  | "settings";
+  | "reports";
 
 export interface WorkspaceNavItem {
   key: string;

@@ -12,7 +12,6 @@ export interface RegisterFormValues {
   tenancyName: string;
   password: string;
   confirmPassword: string;
-  acceptTerms: boolean;
 }
 
 export interface LoginRequest {

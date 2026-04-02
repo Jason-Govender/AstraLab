@@ -50,25 +50,21 @@ export const useStyles = createStyles(({ token, css }) => ({
   `,
 
   brand: css`
-    margin: 0;
-    color: ${token.colorText} !important;
-    font-size: 18px !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.03em;
+    display: inline-flex;
+    align-items: center;
   `,
 
   mobileBrand: css`
     display: none;
-    margin: 0 !important;
-    color: ${token.colorText} !important;
+    align-items: center;
 
     @media (max-width: 1024px) {
-      display: block;
+      display: inline-flex;
     }
   `,
 
   navigationSection: css`
-    margin-top: 48px;
+    margin-top: 32px;
   `,
 
   sectionLabel: css`
