@@ -1,5 +1,7 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
+using System.Collections.Generic;
+using AstraLab.Core.Domains.Analytics;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Core.Domains.ML;
 
@@ -89,5 +91,15 @@ namespace AstraLab.Core.Domains.AI
         /// Gets or sets the optional serialized metadata payload for future extensibility.
         /// </summary>
         public string MetadataJson { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted analytics insights derived from this response.
+        /// </summary>
+        public ICollection<InsightRecord> InsightRecords { get; set; } = new List<InsightRecord>();
+
+        /// <summary>
+        /// Gets or sets the persisted reports derived from this response.
+        /// </summary>
+        public ICollection<ReportRecord> ReportRecords { get; set; } = new List<ReportRecord>();
     }
 }

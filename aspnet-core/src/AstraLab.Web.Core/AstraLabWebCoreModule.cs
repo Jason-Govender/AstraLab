@@ -15,9 +15,11 @@ using AstraLab.Configuration;
 using AstraLab.EntityFrameworkCore;
 using AstraLab.Services.Datasets.Storage;
 using AstraLab.Services.AI;
+using AstraLab.Services.Analytics.Storage;
 using AstraLab.Services.ML;
 using AstraLab.Services.ML.Storage;
 using AstraLab.Services.Storage;
+using AstraLab.Web.Core.Analytics.Storage;
 using AstraLab.Web.Core.Datasets.Storage;
 using AstraLab.Web.Core.ML;
 using AstraLab.Web.Core.ML.Storage;
@@ -58,6 +60,7 @@ namespace AstraLab
                  );
 
             RegisterDatasetStorage();
+            RegisterAnalyticsExportStorage();
             RegisterMlExecution();
             RegisterAiGeneration();
             ConfigureTokenAuth();
@@ -115,6 +118,8 @@ namespace AstraLab
                         DatasetKeyPrefix = _appConfiguration["ObjectStorage:DatasetKeyPrefix"] ?? "datasets",
                         MlArtifactBucketName = _appConfiguration["ObjectStorage:MlArtifactBucketName"],
                         MlArtifactKeyPrefix = _appConfiguration["ObjectStorage:MlArtifactKeyPrefix"] ?? "ml-artifacts",
+                        AnalyticsExportBucketName = _appConfiguration["ObjectStorage:AnalyticsExportBucketName"],
+                        AnalyticsExportKeyPrefix = _appConfiguration["ObjectStorage:AnalyticsExportKeyPrefix"] ?? "analytics-exports",
                         PresignedUrlTtlSeconds = ReadIntegerSetting("ObjectStorage:PresignedUrlTtlSeconds", 900)
                     })
                     .LifestyleSingleton(),
@@ -126,6 +131,17 @@ namespace AstraLab
                     .LifestyleTransient(),
                 Component.For<IRawDatasetStorage>()
                     .ImplementedBy<CompositeRawDatasetStorage>()
+                    .LifestyleTransient());
+        }
+
+        private void RegisterAnalyticsExportStorage()
+        {
+            IocManager.IocContainer.Register(
+                Component.For<IAnalyticsExportStorageProvider>()
+                    .ImplementedBy<S3CompatibleAnalyticsExportStorage>()
+                    .LifestyleTransient(),
+                Component.For<IAnalyticsExportStorage>()
+                    .ImplementedBy<CompositeAnalyticsExportStorage>()
                     .LifestyleTransient());
         }
 
