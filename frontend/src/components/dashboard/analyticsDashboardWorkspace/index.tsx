@@ -35,6 +35,7 @@ import {
   getMlTaskTypeLabel,
 } from "@/utils/ml";
 import { getDatasetTransformationTypeLabel } from "@/utils/datasetTransformations";
+import { buildReportsHref } from "@/utils/reports";
 import { useStyles } from "./style";
 
 const { Paragraph, Text, Title } = Typography;
@@ -222,6 +223,14 @@ export const AnalyticsDashboardWorkspace = ({
               disabled={!selectedDatasetId}
             >
               Open ML workspace
+            </Button>
+            <Button
+              onClick={() =>
+                router.push(buildReportsHref(selectedDatasetId, selectedDatasetVersionId))
+              }
+              disabled={!selectedDatasetId}
+            >
+              Open reports
             </Button>
             <Button
               type="primary"

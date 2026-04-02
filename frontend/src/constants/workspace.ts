@@ -35,7 +35,7 @@ export const WORKSPACE_NAVIGATION: WorkspaceNavItem[] = [
     label: "Reports",
     href: "/reports",
     icon: "reports",
-    isAvailable: false,
+    isAvailable: true,
   },
   {
     key: "settings",
