@@ -83,7 +83,7 @@ namespace AstraLab.Services.Analytics
                 DatasetVersionId = analyticsExport.DatasetVersionId,
                 MLExperimentId = analyticsExport.MLExperimentId,
                 Report = ObjectMapper.Map<ReportRecordDto>(report),
-                Export = ObjectMapper.Map<AnalyticsExportDto>(analyticsExport)
+                Export = MapExportDto(analyticsExport)
             };
         }
 
@@ -106,7 +106,7 @@ namespace AstraLab.Services.Analytics
                 DatasetVersionId = analyticsExport.DatasetVersionId,
                 MLExperimentId = analyticsExport.MLExperimentId,
                 Report = ObjectMapper.Map<ReportRecordDto>(report),
-                Export = ObjectMapper.Map<AnalyticsExportDto>(analyticsExport)
+                Export = MapExportDto(analyticsExport)
             };
         }
 
@@ -204,7 +204,7 @@ namespace AstraLab.Services.Analytics
         public async Task<AnalyticsExportDto> GetExportAsync(EntityDto<long> id)
         {
             var analyticsExport = await GetValidatedExportAsync(id.Id, GetRequiredTenantId(), AbpSession.GetUserId());
-            return ObjectMapper.Map<AnalyticsExportDto>(analyticsExport);
+            return MapExportDto(analyticsExport);
         }
 
         /// <summary>
@@ -231,7 +231,7 @@ namespace AstraLab.Services.Analytics
 
             return new PagedResultDto<AnalyticsExportDto>(
                 totalCount,
-                items.Select(ObjectMapper.Map<AnalyticsExportDto>).ToList());
+                items.Select(MapExportDto).ToList());
         }
 
         /// <summary>
@@ -319,6 +319,16 @@ namespace AstraLab.Services.Analytics
             }
 
             return AbpSession.TenantId.Value;
+        }
+
+        /// <summary>
+        /// Maps a persisted analytics export and injects its authenticated download URL.
+        /// </summary>
+        private AnalyticsExportDto MapExportDto(AnalyticsExport analyticsExport)
+        {
+            var dto = ObjectMapper.Map<AnalyticsExportDto>(analyticsExport);
+            dto.DownloadUrl = $"/api/services/app/analytics/exports/{analyticsExport.Id}/download";
+            return dto;
         }
     }
 }

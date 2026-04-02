@@ -75,5 +75,10 @@ namespace AstraLab.Services.Analytics.Dto
         /// Gets or sets the creation time of the persisted export reference.
         /// </summary>
         public DateTime CreationTime { get; set; }
+
+        /// <summary>
+        /// Gets or sets the authenticated download URL for the stored export.
+        /// </summary>
+        public string DownloadUrl { get; set; }
     }
 }

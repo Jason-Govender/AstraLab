@@ -206,6 +206,32 @@ namespace AstraLab.Tests.Services.Analytics
             result.Items.Single().DisplayName.ShouldBe("report.pdf");
         }
 
+        [Fact]
+        public async Task GetExportAsync_Should_Populate_Download_Url()
+        {
+            var exportId = UsingDbContext(context =>
+            {
+                var scenario = CreateScenario(context, "analytics-export-url", AbpSession.UserId.Value);
+                var analyticsExport = context.AnalyticsExports.Add(new AnalyticsExport
+                {
+                    TenantId = 1,
+                    DatasetVersionId = scenario.DatasetVersionId,
+                    ExportType = AnalyticsExportType.Document,
+                    DisplayName = "stakeholder-report.pdf",
+                    StorageProvider = "s3-compatible",
+                    StorageKey = "analytics/stakeholder-report.pdf",
+                    ContentType = "application/pdf"
+                }).Entity;
+
+                context.SaveChanges();
+                return analyticsExport.Id;
+            });
+
+            var result = await _analyticsAppService.GetExportAsync(new EntityDto<long>(exportId));
+
+            result.DownloadUrl.ShouldBe($"/api/services/app/analytics/exports/{exportId}/download");
+        }
+
         private static AnalyticsScenario CreateScenario(AstraLab.EntityFrameworkCore.AstraLabDbContext context, string name, long ownerUserId)
         {
             var dataset = CreateDataset(context, name, ownerUserId);
