@@ -7,6 +7,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "AstraLab",
   description: "Profile datasets, analyze data, and run ML workflows in one workspace.",
+  icons: {
+    icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/logo.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({

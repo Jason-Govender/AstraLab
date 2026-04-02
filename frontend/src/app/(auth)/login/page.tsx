@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { App, Col, Row, Typography } from "antd";
+import { Col, Row, Typography } from "antd";
 import { REGISTER_ROUTE } from "@/constants/auth";
 import { useAuthActions, useAuthState } from "@/providers/authProvider";
 import type { LoginFormValues } from "@/types/auth";
@@ -23,7 +23,6 @@ const metrics: Metric[] = [
 ];
 
 function LoginRouteContent() {
-  const { message } = App.useApp();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasClearedFeedback = useRef(false);
@@ -50,10 +49,6 @@ function LoginRouteContent() {
     } catch {}
   };
 
-  const handleAuxClick = (label: string) => {
-    void message.info(`${label} is coming soon.`);
-  };
-
   return (
     <main className={styles.page}>
       <section className={styles.shell}>
@@ -69,7 +64,6 @@ function LoginRouteContent() {
                 successMessage={successMessage}
                 isSubmitting={isLoggingIn}
                 onSubmit={handleSubmit}
-                onForgotPassword={() => handleAuxClick("Forgot password")}
                 onRegister={() => router.push(REGISTER_ROUTE)}
               />
 

@@ -15,7 +15,6 @@ import {
 } from "antd";
 import type { MenuProps } from "antd";
 import {
-  BellOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   ExperimentOutlined,
@@ -24,8 +23,8 @@ import {
   MenuOutlined,
   RobotOutlined,
   SearchOutlined,
-  SettingOutlined,
 } from "@ant-design/icons";
+import { BrandLogo } from "@/components/BrandLogo";
 import { WORKSPACE_NAVIGATION } from "@/constants/workspace";
 import { useAuthActions, useAuthState } from "@/providers/authProvider";
 import type {
@@ -35,7 +34,7 @@ import type {
 } from "@/types/workspace";
 import { useStyles } from "./style";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const ICON_MAP: Record<WorkspaceIconKey, ReactNode> = {
   dashboard: <DashboardOutlined />,
@@ -43,7 +42,6 @@ const ICON_MAP: Record<WorkspaceIconKey, ReactNode> = {
   assistant: <RobotOutlined />,
   mlWorkspace: <ExperimentOutlined />,
   reports: <FileTextOutlined />,
-  settings: <SettingOutlined />,
 };
 
 function getUserInitials(name: string) {
@@ -99,9 +97,9 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
 
   const navigationContent = (
     <div className={styles.mobileDrawerContent}>
-      <Title level={4} className={styles.brand}>
-        AstraLab
-      </Title>
+      <div className={styles.brand}>
+        <BrandLogo variant="sidebar" />
+      </div>
 
       <section className={styles.navigationSection}>
         <Text className={styles.sectionLabel}>Workspace</Text>
@@ -169,9 +167,9 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
               aria-label="Open navigation"
             />
 
-            <Title level={4} className={styles.mobileBrand}>
-              AstraLab
-            </Title>
+            <div className={styles.mobileBrand}>
+              <BrandLogo variant="header" />
+            </div>
 
             <Input
               size="large"
@@ -182,10 +180,6 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
             />
 
             <div className={styles.headerUtilities}>
-              <Button type="default" className={styles.utilityButton}>
-                <BellOutlined /> Alerts
-              </Button>
-
               <Dropdown
                 menu={{
                   items: profileMenuItems,

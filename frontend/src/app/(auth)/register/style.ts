@@ -41,12 +41,9 @@ export const useStyles = createStyles(({ token, css }) => ({
   `,
 
   brand: css`
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     margin-bottom: 28px;
-    color: ${token.colorText};
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
   `,
 
   heroTitle: css`

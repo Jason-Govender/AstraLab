@@ -2,7 +2,6 @@ import {
   Alert,
   Button,
   Card,
-  Checkbox,
   Col,
   Form,
   Input,
@@ -200,31 +199,6 @@ export function RegisterFormCard({
             placeholder="••••••••••••"
             className={styles.input}
           />
-        </Form.Item>
-
-        <Form.Item<RegisterFormValues>
-          name="acceptTerms"
-          valuePropName="checked"
-          className={styles.checkboxRow}
-          rules={[
-            {
-              validator(_, value) {
-                if (value) {
-                  return Promise.resolve();
-                }
-
-                return Promise.reject(
-                  new Error("Please agree to the terms and privacy policy"),
-                );
-              },
-            },
-          ]}
-        >
-          <Checkbox className={styles.checkbox}>
-            <span className={styles.checkboxLabel}>
-              I agree to the terms and privacy policy
-            </span>
-          </Checkbox>
         </Form.Item>
 
         <Button
