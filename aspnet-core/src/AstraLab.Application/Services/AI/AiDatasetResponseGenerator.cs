@@ -90,7 +90,8 @@ namespace AstraLab.Services.AI
                 ResponseType = responseType,
                 DatasetContext = datasetContext,
                 EnrichmentContext = enrichmentContext,
-                UserQuestion = userQuery
+                UserQuestion = userQuery,
+                IsAutomaticProfilingInsight = false
             });
 
             var generatedText = await _aiTextGenerationClient.GenerateTextAsync(new AiTextGenerationRequest
@@ -121,7 +122,13 @@ namespace AstraLab.Services.AI
                 UserQuery = string.IsNullOrWhiteSpace(userQuery) ? null : userQuery.Trim(),
                 ResponseContent = generatedText.Text.Trim(),
                 ResponseType = responseType,
-                MetadataJson = BuildMetadataJson(generatedText, datasetContext, enrichmentContext, conversationHistory.Count)
+                MetadataJson = BuildMetadataJson(
+                    generatedText,
+                    datasetContext,
+                    enrichmentContext,
+                    conversationHistory.Count,
+                    null,
+                    null)
             });
 
             persistedConversation.LastInteractionTime = DateTime.UtcNow;
@@ -130,6 +137,73 @@ namespace AstraLab.Services.AI
             return new GenerateDatasetAiResponseResult
             {
                 ConversationId = persistedConversation.Id,
+                Response = ObjectMapper.Map<AIResponseDto>(response)
+            };
+        }
+
+        /// <summary>
+        /// Generates and persists a profiling-triggered automatic insight for the selected dataset version.
+        /// </summary>
+        public async Task<GenerateDatasetAiResponseResult> GenerateAutomaticInsightAsync(
+            long datasetVersionId,
+            long datasetProfileId,
+            int tenantId,
+            long ownerUserId)
+        {
+            var datasetVersion = await _datasetOwnershipAccessChecker.GetDatasetVersionForOwnerAsync(datasetVersionId, tenantId, ownerUserId);
+            var datasetContext = await _aiDatasetContextBuilder.BuildAsync(datasetVersionId, tenantId, ownerUserId);
+            var enrichmentContext = await _aiDatasetInsightReader.ReadAsync(datasetVersionId, tenantId, ownerUserId);
+            var prompt = _aiPromptBuilder.Build(new AiPromptBuildRequest
+            {
+                ResponseType = AIResponseType.Insight,
+                DatasetContext = datasetContext,
+                EnrichmentContext = enrichmentContext,
+                IsAutomaticProfilingInsight = true
+            });
+
+            var generatedText = await _aiTextGenerationClient.GenerateTextAsync(new AiTextGenerationRequest
+            {
+                SystemInstructions = prompt.SystemInstructions,
+                ConversationHistory = new List<AiConversationHistoryMessage>(),
+                UserMessage = prompt.UserMessage
+            });
+
+            if (string.IsNullOrWhiteSpace(generatedText.Text))
+            {
+                throw new UserFriendlyException("The AI provider did not return usable response text.");
+            }
+
+            var conversation = await _aiConversationRepository.InsertAsync(new AIConversation
+            {
+                TenantId = tenantId,
+                DatasetId = datasetVersion.DatasetId,
+                OwnerUserId = ownerUserId,
+                LastInteractionTime = DateTime.UtcNow
+            });
+
+            var response = await _aiResponseRepository.InsertAsync(new AIResponse
+            {
+                TenantId = tenantId,
+                AIConversation = conversation,
+                DatasetVersionId = datasetVersionId,
+                UserQuery = null,
+                ResponseContent = generatedText.Text.Trim(),
+                ResponseType = AIResponseType.Insight,
+                MetadataJson = BuildMetadataJson(
+                    generatedText,
+                    datasetContext,
+                    enrichmentContext,
+                    0,
+                    AiAutomaticInsightMetadata.ProfilingCompletedGenerationTrigger,
+                    datasetProfileId)
+            });
+
+            conversation.LastInteractionTime = DateTime.UtcNow;
+            await CurrentUnitOfWork.SaveChangesAsync();
+
+            return new GenerateDatasetAiResponseResult
+            {
+                ConversationId = conversation.Id,
                 Response = ObjectMapper.Map<AIResponseDto>(response)
             };
         }
@@ -206,10 +280,14 @@ namespace AstraLab.Services.AI
             AiTextGenerationResult result,
             AiDatasetContext datasetContext,
             AiDatasetInsightContext enrichmentContext,
-            int replayedMessageCount)
+            int replayedMessageCount,
+            string generationTrigger,
+            long? datasetProfileId)
         {
             return JsonSerializer.Serialize(new
             {
+                generationTrigger,
+                datasetProfileId,
                 provider = result.Provider,
                 model = result.Model,
                 providerResponseId = result.ProviderResponseId,

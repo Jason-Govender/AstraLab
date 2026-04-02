@@ -29,5 +29,25 @@ namespace AstraLab.Services.AI
         /// Answers a grounded natural-language question about the selected dataset version.
         /// </summary>
         Task<GenerateDatasetAiResponseResult> AskAsync(AskDatasetAiQuestionRequest input);
+
+        /// <summary>
+        /// Gets a persisted AI conversation summary for the selected conversation.
+        /// </summary>
+        Task<AIConversationDto> GetConversationAsync(EntityDto<long> conversationId);
+
+        /// <summary>
+        /// Gets persisted AI conversations for the selected dataset or dataset version.
+        /// </summary>
+        Task<PagedResultDto<AIConversationDto>> GetConversationsAsync(GetDatasetAiConversationsRequest input);
+
+        /// <summary>
+        /// Gets persisted AI responses for the selected conversation thread.
+        /// </summary>
+        Task<PagedResultDto<AIResponseDto>> GetResponsesAsync(GetDatasetAiResponsesRequest input);
+
+        /// <summary>
+        /// Gets the latest persisted profiling-triggered automatic insight for the selected dataset version.
+        /// </summary>
+        Task<AIResponseDto> GetLatestAutomaticInsightAsync(EntityDto<long> datasetVersionId);
     }
 }

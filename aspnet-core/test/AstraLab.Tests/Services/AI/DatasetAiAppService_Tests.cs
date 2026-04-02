@@ -285,6 +285,289 @@ namespace AstraLab.Tests.Services.AI
             });
         }
 
+        [Fact]
+        public async Task GetLatestAutomaticInsightAsync_Should_Return_The_Newest_Profiling_Triggered_Insight_Only()
+        {
+            var datasetVersionId = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-auto-insight-dataset", AbpSession.GetUserId());
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+                AddProfileData(context, datasetVersion.Id, "amount");
+
+                var conversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 11, 0, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    ResponseContent = "Manual insight.",
+                    ResponseType = AIResponseType.Insight,
+                    MetadataJson = "{\"provider\":\"groq\"}",
+                    CreationTime = new DateTime(2026, 4, 2, 11, 5, 0, DateTimeKind.Utc)
+                });
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    ResponseContent = "Older automatic insight.",
+                    ResponseType = AIResponseType.Insight,
+                    MetadataJson = "{\"generationTrigger\":\"profilingCompleted\",\"datasetProfileId\":1,\"provider\":\"groq\"}",
+                    CreationTime = new DateTime(2026, 4, 2, 11, 10, 0, DateTimeKind.Utc)
+                });
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    ResponseContent = "Latest automatic insight.",
+                    ResponseType = AIResponseType.Insight,
+                    MetadataJson = "{\"generationTrigger\":\"profilingCompleted\",\"datasetProfileId\":2,\"provider\":\"groq\"}",
+                    CreationTime = new DateTime(2026, 4, 2, 11, 20, 0, DateTimeKind.Utc)
+                });
+
+                context.SaveChanges();
+                return datasetVersion.Id;
+            });
+
+            var result = await _datasetAiAppService.GetLatestAutomaticInsightAsync(new EntityDto<long>(datasetVersionId));
+
+            result.ShouldNotBeNull();
+            result.ResponseContent.ShouldBe("Latest automatic insight.");
+        }
+
+        [Fact]
+        public async Task GetConversationAsync_Should_Return_The_Persisted_Conversation_Summary()
+        {
+            var scenario = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-get-conversation-dataset", AbpSession.GetUserId());
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+
+                var conversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 11, 30, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    UserQuery = "Summarize this data",
+                    ResponseContent = "A concise summary for the assistant route.",
+                    ResponseType = AIResponseType.Summary,
+                    CreationTime = new DateTime(2026, 4, 2, 11, 31, 0, DateTimeKind.Utc)
+                });
+                context.SaveChanges();
+
+                return conversation.Id;
+            });
+
+            var result = await _datasetAiAppService.GetConversationAsync(new EntityDto<long>(scenario));
+
+            result.ShouldNotBeNull();
+            result.Id.ShouldBe(scenario);
+            result.ResponseCount.ShouldBe(1);
+            result.LatestResponseType.ShouldBe(AIResponseType.Summary);
+            result.LatestUserQuery.ShouldBe("Summarize this data");
+            result.LatestResponsePreview.ShouldContain("assistant route");
+        }
+
+        [Fact]
+        public async Task GetConversationsAsync_Should_Filter_By_Dataset_Version_And_Sort_By_Latest_Interaction()
+        {
+            var scenario = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-conversation-list-dataset", AbpSession.GetUserId());
+                var rawVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+                var processedVersion = CreateDatasetVersion(context, dataset.Id, 2, DatasetVersionType.Processed, rawVersion.Id);
+
+                var olderConversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 10, 0, 0, DateTimeKind.Utc)
+                }).Entity;
+                var newerConversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = olderConversation.Id,
+                    DatasetVersionId = rawVersion.Id,
+                    ResponseContent = "Older raw-version conversation.",
+                    ResponseType = AIResponseType.Summary,
+                    CreationTime = new DateTime(2026, 4, 2, 10, 5, 0, DateTimeKind.Utc)
+                });
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = newerConversation.Id,
+                    DatasetVersionId = processedVersion.Id,
+                    ResponseContent = "Newer processed-version conversation.",
+                    ResponseType = AIResponseType.QuestionAnswer,
+                    CreationTime = new DateTime(2026, 4, 2, 12, 5, 0, DateTimeKind.Utc)
+                });
+
+                context.SaveChanges();
+
+                return new
+                {
+                    DatasetId = dataset.Id,
+                    RawVersionId = rawVersion.Id,
+                    ProcessedVersionId = processedVersion.Id,
+                    OlderConversationId = olderConversation.Id,
+                    NewerConversationId = newerConversation.Id
+                };
+            });
+
+            var allResults = await _datasetAiAppService.GetConversationsAsync(new GetDatasetAiConversationsRequest
+            {
+                DatasetId = scenario.DatasetId,
+                SkipCount = 0,
+                MaxResultCount = 10
+            });
+
+            allResults.TotalCount.ShouldBe(2);
+            allResults.Items.First().Id.ShouldBe(scenario.NewerConversationId);
+            allResults.Items.Last().Id.ShouldBe(scenario.OlderConversationId);
+
+            var filteredResults = await _datasetAiAppService.GetConversationsAsync(new GetDatasetAiConversationsRequest
+            {
+                DatasetId = scenario.DatasetId,
+                DatasetVersionId = scenario.RawVersionId,
+                SkipCount = 0,
+                MaxResultCount = 10
+            });
+
+            filteredResults.TotalCount.ShouldBe(1);
+            filteredResults.Items.Single().Id.ShouldBe(scenario.OlderConversationId);
+        }
+
+        [Fact]
+        public async Task GetResponsesAsync_Should_Return_Chronological_Conversation_Turns()
+        {
+            var scenario = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-response-thread-dataset", AbpSession.GetUserId());
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+
+                var conversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    UserQuery = "First question",
+                    ResponseContent = "First answer",
+                    ResponseType = AIResponseType.QuestionAnswer,
+                    CreationTime = new DateTime(2026, 4, 2, 10, 0, 0, DateTimeKind.Utc)
+                });
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    UserQuery = "Second question",
+                    ResponseContent = "Second answer",
+                    ResponseType = AIResponseType.QuestionAnswer,
+                    CreationTime = new DateTime(2026, 4, 2, 11, 0, 0, DateTimeKind.Utc)
+                });
+
+                context.SaveChanges();
+                return conversation.Id;
+            });
+
+            var result = await _datasetAiAppService.GetResponsesAsync(new GetDatasetAiResponsesRequest
+            {
+                ConversationId = scenario,
+                SkipCount = 0,
+                MaxResultCount = 10,
+                IsChronological = true
+            });
+
+            result.TotalCount.ShouldBe(2);
+            result.Items.First().UserQuery.ShouldBe("First question");
+            result.Items.Last().UserQuery.ShouldBe("Second question");
+        }
+
+        [Fact]
+        public async Task GetResponsesAsync_Should_Reject_A_Conversation_From_A_Different_Owner()
+        {
+            var conversationId = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-foreign-conversation-dataset", AbpSession.GetUserId() + 20);
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+
+                var conversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = dataset.OwnerUserId,
+                    LastInteractionTime = new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    ResponseContent = "Foreign response",
+                    ResponseType = AIResponseType.Summary
+                });
+                context.SaveChanges();
+
+                return conversation.Id;
+            });
+
+            var exception = await Should.ThrowAsync<UserFriendlyException>(() =>
+                _datasetAiAppService.GetResponsesAsync(new GetDatasetAiResponsesRequest
+                {
+                    ConversationId = conversationId,
+                    SkipCount = 0,
+                    MaxResultCount = 10
+                }));
+
+            exception.Message.ShouldBe("The requested AI conversation could not be found.");
+        }
+
         private static Dataset CreateDataset(AstraLab.EntityFrameworkCore.AstraLabDbContext context, string name, long ownerUserId)
         {
             var dataset = context.Datasets.Add(new Dataset

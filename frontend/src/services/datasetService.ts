@@ -1,5 +1,8 @@
 import type { AbpApiResponse, AbpPagedResult } from "@/types/api";
 import type {
+  AIConversation,
+  AIResponse,
+  AskDatasetAiQuestionRequest,
   BarChart,
   DatasetCatalogFilters,
   DatasetColumnInsight,
@@ -25,6 +28,9 @@ import type {
   UploadRawDatasetPayload,
   CorrelationAnalysis,
   DatasetBarChartRequest,
+  GenerateDatasetAiResponseResult,
+  GetDatasetAiConversationsRequest,
+  GetDatasetAiResponsesRequest,
 } from "@/types/datasets";
 import { axiosInstance } from "@/utils/axiosInstance";
 
@@ -54,6 +60,19 @@ const DATASET_EXPLORATION_DISTRIBUTION_ENDPOINT =
   "/api/services/app/DatasetExploration/GetDistribution";
 const DATASET_EXPLORATION_CORRELATION_ENDPOINT =
   "/api/services/app/DatasetExploration/GetCorrelation";
+const DATASET_AI_LATEST_AUTOMATIC_INSIGHT_ENDPOINT =
+  "/api/services/app/DatasetAi/GetLatestAutomaticInsight";
+const DATASET_AI_GENERATE_SUMMARY_ENDPOINT =
+  "/api/services/app/DatasetAi/GenerateSummary";
+const DATASET_AI_GENERATE_INSIGHTS_ENDPOINT =
+  "/api/services/app/DatasetAi/GenerateInsights";
+const DATASET_AI_GENERATE_RECOMMENDATIONS_ENDPOINT =
+  "/api/services/app/DatasetAi/GenerateCleaningRecommendations";
+const DATASET_AI_ASK_ENDPOINT = "/api/services/app/DatasetAi/Ask";
+const DATASET_AI_GET_CONVERSATIONS_ENDPOINT =
+  "/api/services/app/DatasetAi/GetConversations";
+const DATASET_AI_GET_RESPONSES_ENDPOINT =
+  "/api/services/app/DatasetAi/GetResponses";
 
 const buildUploadFormData = ({
   name,
@@ -289,6 +308,105 @@ export const getDatasetCorrelation = async (
     },
     paramsSerializer: {
       indexes: null,
+    },
+  });
+
+  return response.data.result;
+};
+
+export const getLatestAutomaticInsight = async (
+  datasetVersionId: number,
+): Promise<AIResponse | null> => {
+  const response = await axiosInstance.get<AbpApiResponse<AIResponse | null>>(
+    DATASET_AI_LATEST_AUTOMATIC_INSIGHT_ENDPOINT,
+    {
+      params: {
+        id: datasetVersionId,
+      },
+    },
+  );
+
+  return response.data.result ?? null;
+};
+
+export const generateDatasetSummary = async (
+  datasetVersionId: number,
+): Promise<GenerateDatasetAiResponseResult> => {
+  const response = await axiosInstance.post<
+    AbpApiResponse<GenerateDatasetAiResponseResult>
+  >(DATASET_AI_GENERATE_SUMMARY_ENDPOINT, {
+    id: datasetVersionId,
+  });
+
+  return response.data.result;
+};
+
+export const generateDatasetInsights = async (
+  datasetVersionId: number,
+): Promise<GenerateDatasetAiResponseResult> => {
+  const response = await axiosInstance.post<
+    AbpApiResponse<GenerateDatasetAiResponseResult>
+  >(DATASET_AI_GENERATE_INSIGHTS_ENDPOINT, {
+    id: datasetVersionId,
+  });
+
+  return response.data.result;
+};
+
+export const generateDatasetCleaningRecommendations = async (
+  datasetVersionId: number,
+): Promise<GenerateDatasetAiResponseResult> => {
+  const response = await axiosInstance.post<
+    AbpApiResponse<GenerateDatasetAiResponseResult>
+  >(DATASET_AI_GENERATE_RECOMMENDATIONS_ENDPOINT, {
+    id: datasetVersionId,
+  });
+
+  return response.data.result;
+};
+
+export const askDatasetQuestion = async (
+  request: AskDatasetAiQuestionRequest,
+): Promise<GenerateDatasetAiResponseResult> => {
+  const response = await axiosInstance.post<
+    AbpApiResponse<GenerateDatasetAiResponseResult>
+  >(DATASET_AI_ASK_ENDPOINT, {
+    datasetVersionId: request.datasetVersionId,
+    question: request.question,
+    conversationId: request.conversationId,
+  });
+
+  return response.data.result;
+};
+
+export const getDatasetAiConversations = async (
+  request: GetDatasetAiConversationsRequest,
+): Promise<AbpPagedResult<AIConversation>> => {
+  const response = await axiosInstance.get<
+    AbpApiResponse<AbpPagedResult<AIConversation>>
+  >(DATASET_AI_GET_CONVERSATIONS_ENDPOINT, {
+    params: {
+      datasetId: request.datasetId,
+      datasetVersionId: request.datasetVersionId,
+      skipCount: (request.page - 1) * request.pageSize,
+      maxResultCount: request.pageSize,
+    },
+  });
+
+  return response.data.result;
+};
+
+export const getDatasetAiResponses = async (
+  request: GetDatasetAiResponsesRequest,
+): Promise<AbpPagedResult<AIResponse>> => {
+  const response = await axiosInstance.get<
+    AbpApiResponse<AbpPagedResult<AIResponse>>
+  >(DATASET_AI_GET_RESPONSES_ENDPOINT, {
+    params: {
+      conversationId: request.conversationId,
+      skipCount: (request.page - 1) * request.pageSize,
+      maxResultCount: request.pageSize,
+      isChronological: request.isChronological ?? true,
     },
   });
 

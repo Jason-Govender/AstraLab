@@ -78,6 +78,14 @@ export enum DatasetTransformationDataType {
   String = "string",
 }
 
+export enum AIResponseType {
+  Summary = 1,
+  Recommendation = 2,
+  Explanation = 3,
+  Insight = 4,
+  QuestionAnswer = 5,
+}
+
 export interface Dataset {
   id: number;
   name: string;
@@ -87,6 +95,56 @@ export interface Dataset {
   ownerUserId: number;
   originalFileName: string;
   creationTime: string;
+}
+
+export interface AIResponse {
+  id: number;
+  aiConversationId: number;
+  datasetVersionId: number;
+  userQuery?: string | null;
+  responseContent: string;
+  responseType: AIResponseType;
+  datasetTransformationId?: number | null;
+  metadataJson?: string | null;
+  creationTime: string;
+}
+
+export interface AIConversation {
+  id: number;
+  datasetId: number;
+  ownerUserId: number;
+  lastInteractionTime: string;
+  creationTime: string;
+  responseCount: number;
+  latestDatasetVersionId?: number | null;
+  latestResponseType?: AIResponseType | null;
+  latestUserQuery?: string | null;
+  latestResponsePreview?: string | null;
+}
+
+export interface AskDatasetAiQuestionRequest {
+  datasetVersionId: number;
+  question: string;
+  conversationId?: number;
+}
+
+export interface GenerateDatasetAiResponseResult {
+  conversationId: number;
+  response: AIResponse;
+}
+
+export interface GetDatasetAiConversationsRequest {
+  datasetId: number;
+  datasetVersionId?: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface GetDatasetAiResponsesRequest {
+  conversationId: number;
+  page: number;
+  pageSize: number;
+  isChronological?: boolean;
 }
 
 export interface DatasetColumn {

@@ -70,6 +70,25 @@ namespace AstraLab.Tests.Services.AI
             questionAnswerResult.UserMessage.ShouldContain("Answer first in one short paragraph");
         }
 
+        [Fact]
+        public void Build_Should_Use_Four_Section_Automatic_Insight_Prompt_Rules()
+        {
+            var result = _aiPromptBuilder.Build(new AiPromptBuildRequest
+            {
+                ResponseType = AIResponseType.Insight,
+                DatasetContext = BuildDatasetContext(),
+                EnrichmentContext = new AiDatasetInsightContext
+                {
+                    DatasetVersionId = 100
+                },
+                IsAutomaticProfilingInsight = true
+            });
+
+            result.SystemInstructions.ShouldContain("Return exactly four short sections titled Summary");
+            result.UserMessage.ShouldContain("Generate an automatic dataset insight after profiling completed.");
+            result.UserMessage.ShouldContain("Use exactly these headings in order: Summary, Key data quality issues, Notable patterns or anomalies, Suggested next steps.");
+        }
+
         private static AiDatasetContext BuildDatasetContext()
         {
             return new AiDatasetContext

@@ -8,6 +8,11 @@ namespace AstraLab.Services.AI
     public class AiPromptBuildRequest
     {
         /// <summary>
+        /// Gets or sets a value indicating whether this prompt is for an automatic profiling-triggered insight.
+        /// </summary>
+        public bool IsAutomaticProfilingInsight { get; set; }
+
+        /// <summary>
         /// Gets or sets the requested AI response type.
         /// </summary>
         public AIResponseType ResponseType { get; set; }

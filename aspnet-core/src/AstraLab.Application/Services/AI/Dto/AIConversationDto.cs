@@ -30,5 +30,30 @@ namespace AstraLab.Services.AI.Dto
         /// Gets or sets the creation time of the persisted conversation.
         /// </summary>
         public DateTime CreationTime { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of persisted responses in the conversation.
+        /// </summary>
+        public int ResponseCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the latest dataset version identifier represented in the conversation.
+        /// </summary>
+        public long? LatestDatasetVersionId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the response type of the latest persisted AI response.
+        /// </summary>
+        public AIResponseType? LatestResponseType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional latest user query that led to the current response.
+        /// </summary>
+        public string LatestUserQuery { get; set; }
+
+        /// <summary>
+        /// Gets or sets a short preview of the latest persisted response content.
+        /// </summary>
+        public string LatestResponsePreview { get; set; }
     }
 }

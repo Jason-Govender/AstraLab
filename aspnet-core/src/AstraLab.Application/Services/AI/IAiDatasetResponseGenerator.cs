@@ -19,5 +19,14 @@ namespace AstraLab.Services.AI
             long ownerUserId,
             string userQuery = null,
             long? conversationId = null);
+
+        /// <summary>
+        /// Generates and persists a profiling-triggered automatic insight for the selected dataset version.
+        /// </summary>
+        Task<GenerateDatasetAiResponseResult> GenerateAutomaticInsightAsync(
+            long datasetVersionId,
+            long datasetProfileId,
+            int tenantId,
+            long ownerUserId);
     }
 }
