@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
 using AstraLab.Core.Domains.AI;
+using AstraLab.Core.Domains.Analytics;
 using AstraLab.Core.Domains.Datasets;
 
 namespace AstraLab.Core.Domains.ML
@@ -126,5 +127,20 @@ namespace AstraLab.Core.Domains.ML
         /// Gets or sets the persisted AI responses optionally linked to this experiment.
         /// </summary>
         public ICollection<AIResponse> AIResponses { get; set; } = new List<AIResponse>();
+
+        /// <summary>
+        /// Gets or sets the persisted analytics insights optionally linked to this experiment.
+        /// </summary>
+        public ICollection<InsightRecord> InsightRecords { get; set; } = new List<InsightRecord>();
+
+        /// <summary>
+        /// Gets or sets the persisted reports optionally linked to this experiment.
+        /// </summary>
+        public ICollection<ReportRecord> ReportRecords { get; set; } = new List<ReportRecord>();
+
+        /// <summary>
+        /// Gets or sets the persisted export references optionally linked to this experiment.
+        /// </summary>
+        public ICollection<AnalyticsExport> AnalyticsExports { get; set; } = new List<AnalyticsExport>();
     }
 }

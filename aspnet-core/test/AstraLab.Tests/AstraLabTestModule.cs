@@ -11,10 +11,12 @@ using Abp.TestBase;
 using Abp.Zero.Configuration;
 using Abp.Zero.EntityFrameworkCore;
 using AstraLab.EntityFrameworkCore;
+using AstraLab.Services.Analytics.Storage;
 using AstraLab.Services.Datasets.Storage;
 using AstraLab.Services.ML;
 using AstraLab.Services.ML.Storage;
 using AstraLab.Services.Storage;
+using AstraLab.Web.Core.Analytics.Storage;
 using AstraLab.Tests.DependencyInjection;
 using AstraLab.Web.Core.Datasets.Storage;
 using AstraLab.Web.Core.ML.Storage;
@@ -52,6 +54,7 @@ namespace AstraLab.Tests
 
             Configuration.ReplaceService<IEmailSender, NullEmailSender>(DependencyLifeStyle.Transient);
             RegisterDatasetStorage();
+            RegisterAnalyticsExportStorage();
             RegisterMlExecutionOptions();
         }
 
@@ -89,6 +92,7 @@ namespace AstraLab.Tests
                         AccessKey = "test-access-key",
                         SecretKey = "test-secret-key",
                         DatasetBucketName = "datasets",
+                        AnalyticsExportBucketName = "analytics-exports",
                         MlArtifactBucketName = "ml-artifacts",
                         PresignedUrlTtlSeconds = 900
                     })
@@ -98,6 +102,17 @@ namespace AstraLab.Tests
                     .LifestyleTransient(),
                 Component.For<IRawDatasetStorage>()
                     .ImplementedBy<CompositeRawDatasetStorage>()
+                    .LifestyleTransient());
+        }
+
+        private void RegisterAnalyticsExportStorage()
+        {
+            IocManager.IocContainer.Register(
+                Component.For<IAnalyticsExportStorageProvider>()
+                    .ImplementedBy<S3CompatibleAnalyticsExportStorage>()
+                    .LifestyleTransient(),
+                Component.For<IAnalyticsExportStorage>()
+                    .ImplementedBy<CompositeAnalyticsExportStorage>()
                     .LifestyleTransient());
         }
 

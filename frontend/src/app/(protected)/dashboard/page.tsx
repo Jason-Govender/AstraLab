@@ -1,180 +1,219 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Button, Card, Col, Row, Table, Tag, Typography } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { useEffect, useEffectEvent } from "react";
+import { Button } from "antd";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnalyticsDashboardWorkspace } from "@/components/dashboard/analyticsDashboardWorkspace";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
+import {
+  AnalyticsDashboardProvider,
+  useAnalyticsDashboardActions,
+  useAnalyticsDashboardState,
+} from "@/providers/analyticsDashboardProvider";
 import { useStyles } from "./style";
 
-const { Paragraph, Text, Title } = Typography;
+const parseQueryNumber = (value: string | null | undefined): number | undefined => {
+  const parsedValue = Number(value);
 
-interface DashboardMetric {
-  label: string;
-  value: string;
-}
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return undefined;
+  }
 
-interface RecentDatasetRow {
-  key: string;
-  dataset: string;
-  updated: string;
-  status: string;
-  statusColor: string;
-  health: string;
-  healthTone: "good" | "warning" | "error";
-  lastAnalysis: string;
-}
+  return parsedValue;
+};
 
-const DASHBOARD_METRICS: DashboardMetric[] = [
-  {
-    label: "Total Datasets",
-    value: "18",
-  },
-  {
-    label: "Processed Versions",
-    value: "42",
-  },
-  {
-    label: "ML Experiments",
-    value: "11",
-  },
-  {
-    label: "Reports Generated",
-    value: "9",
-  },
-];
+const buildDashboardHref = (
+  datasetId?: number,
+  datasetVersionId?: number,
+): string => {
+  const searchParams = new URLSearchParams();
 
-const RECENT_DATASETS: RecentDatasetRow[] = [
-  {
-    key: "customer-churn",
-    dataset: "Customer Churn Dataset",
-    updated: "2 hours ago",
-    status: "Profiled",
-    statusColor: "blue",
-    health: "86 / 100",
-    healthTone: "good",
-    lastAnalysis: "Regression Ready",
-  },
-  {
-    key: "retail-sales",
-    dataset: "Retail Sales Q4",
-    updated: "Yesterday",
-    status: "Transformed",
-    statusColor: "purple",
-    health: "72 / 100",
-    healthTone: "warning",
-    lastAnalysis: "Clustering Run",
-  },
-  {
-    key: "fraud-signals",
-    dataset: "Fraud Signals v2",
-    updated: "3 days ago",
-    status: "Issues",
-    statusColor: "red",
-    health: "54 / 100",
-    healthTone: "error",
-    lastAnalysis: "Anomalies Found",
-  },
-];
+  if (datasetId) {
+    searchParams.set("datasetId", String(datasetId));
+  }
 
-const DashboardPage = () => {
-  const { styles, cx } = useStyles();
+  if (datasetVersionId) {
+    searchParams.set("versionId", String(datasetVersionId));
+  }
+
+  const queryString = searchParams.toString();
+
+  return queryString ? `/dashboard?${queryString}` : "/dashboard";
+};
+
+const DashboardPageContent = () => {
+  const { styles } = useStyles();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const {
+    clearDashboardActionFeedback,
+    exportInsightsCsv,
+    exportReportPdf,
+    generateReport,
+    getRecentDatasets,
+    loadDashboardContext,
+    refreshDashboard,
+  } = useAnalyticsDashboardActions();
+  const {
+    actionErrorMessage,
+    analyticsSummary,
+    contextErrorMessage,
+    datasetErrorMessage,
+    isExportingCsv,
+    isExportingPdf,
+    isGeneratingReport,
+    isLoadingContext,
+    isLoadingDatasets,
+    lastGeneratedExport,
+    lastGeneratedReport,
+    recentDatasets,
+    recentExports,
+    recentInsights,
+    recentReports,
+    selectedDatasetDetails,
+    selectedDatasetId,
+    selectedDatasetVersionId,
+  } = useAnalyticsDashboardState();
 
-  const columns: ColumnsType<RecentDatasetRow> = [
-    {
-      title: "Dataset",
-      dataIndex: "dataset",
-      key: "dataset",
-    },
-    {
-      title: "Updated",
-      dataIndex: "updated",
-      key: "updated",
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      render: (_, record) => <Tag color={record.statusColor}>{record.status}</Tag>,
-    },
-    {
-      title: "Health",
-      dataIndex: "health",
-      key: "health",
-      render: (_, record) => (
-        <span
-          className={cx(
-            record.healthTone === "good" && styles.healthGood,
-            record.healthTone === "warning" && styles.healthWarning,
-            record.healthTone === "error" && styles.healthError,
-          )}
-        >
-          {record.health}
-        </span>
+  const datasetId = parseQueryNumber(searchParams.get("datasetId"));
+  const versionId = parseQueryNumber(searchParams.get("versionId"));
+
+  const loadRecentDatasets = useEffectEvent(() => {
+    void getRecentDatasets();
+  });
+
+  useEffect(() => {
+    loadRecentDatasets();
+  }, []);
+
+  const loadDashboard = useEffectEvent(() => {
+    if (!datasetId) {
+      return;
+    }
+
+    void loadDashboardContext(datasetId, versionId);
+  });
+
+  useEffect(() => {
+    loadDashboard();
+  }, [datasetId, versionId]);
+
+  useEffect(() => {
+    if (datasetId || recentDatasets.length === 0) {
+      return;
+    }
+
+    const defaultDataset =
+      recentDatasets.find((dataset) => dataset.currentVersionId) ?? recentDatasets[0];
+
+    router.replace(
+      buildDashboardHref(
+        defaultDataset.id,
+        defaultDataset.currentVersionId ?? undefined,
       ),
-    },
-    {
-      title: "Last Analysis",
-      dataIndex: "lastAnalysis",
-      key: "lastAnalysis",
-    },
-  ];
+      {
+        scroll: false,
+      },
+    );
+  }, [datasetId, recentDatasets, router]);
+
+  useEffect(() => {
+    if (!datasetId || !selectedDatasetDetails) {
+      return;
+    }
+
+    const effectiveVersionId =
+      selectedDatasetVersionId ?? selectedDatasetDetails.selectedVersion?.id;
+
+    if (!effectiveVersionId) {
+      if (versionId) {
+        router.replace(buildDashboardHref(datasetId), {
+          scroll: false,
+        });
+      }
+
+      return;
+    }
+
+    if (effectiveVersionId !== versionId) {
+      router.replace(buildDashboardHref(datasetId, effectiveVersionId), {
+        scroll: false,
+      });
+    }
+  }, [
+    datasetId,
+    router,
+    selectedDatasetDetails,
+    selectedDatasetVersionId,
+    versionId,
+  ]);
+
+  const handleDatasetChange = (nextDatasetId?: number) => {
+    const currentDataset = recentDatasets.find(
+      (dataset) => dataset.id === nextDatasetId,
+    );
+    router.push(
+      buildDashboardHref(
+        nextDatasetId,
+        currentDataset?.currentVersionId ?? undefined,
+      ),
+    );
+  };
+
+  const handleVersionChange = (nextVersionId?: number) => {
+    router.push(buildDashboardHref(selectedDatasetId, nextVersionId));
+  };
 
   return (
     <>
       <WorkspacePageHeader
-        title="Dataset Dashboard"
-        description="Upload, profile, analyze, and model your datasets from one workspace."
+        title="Analytics Dashboard"
+        description="A polished executive summary of dataset quality, AI findings, transformation outcomes, ML highlights, and stakeholder-ready reporting actions."
+        actions={
+          <div className={styles.actionGroup}>
+            <Button onClick={() => router.push("/datasets")}>Browse datasets</Button>
+            <Button type="primary" onClick={() => router.push("/datasets/upload")}>
+              Upload dataset
+            </Button>
+          </div>
+        }
       />
 
-      <Card className={styles.uploadCard}>
-        <div>
-          <Title level={3} className={styles.uploadTitle}>
-            Upload a New Dataset
-          </Title>
-          <Paragraph className={styles.uploadDescription}>
-            Start a new profiling and analysis workflow by uploading a CSV or JSON
-            file.
-          </Paragraph>
-        </div>
-
-        <Button
-          type="primary"
-          size="large"
-          onClick={() => router.push("/datasets/upload")}
-        >
-          Upload Dataset
-        </Button>
-      </Card>
-
-      <Row gutter={[20, 20]}>
-        {DASHBOARD_METRICS.map((metric) => (
-          <Col key={metric.label} xs={24} sm={12} xl={6}>
-            <Card className={styles.metricCard}>
-              <Text className={styles.metricLabel}>{metric.label}</Text>
-              <Title level={3} className={styles.metricValue}>
-                {metric.value}
-              </Title>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      <Card className={styles.tableCard}>
-        <Title level={3} className={styles.tableTitle}>
-          Recent Datasets
-        </Title>
-
-        <Table<RecentDatasetRow>
-          columns={columns}
-          dataSource={RECENT_DATASETS}
-          pagination={false}
-          className={styles.table}
-          scroll={{ x: 900 }}
-        />
-      </Card>
+      <AnalyticsDashboardWorkspace
+        recentDatasets={recentDatasets}
+        selectedDatasetId={selectedDatasetId ?? datasetId}
+        selectedDatasetVersionId={selectedDatasetVersionId ?? versionId}
+        selectedDatasetDetails={selectedDatasetDetails}
+        analyticsSummary={analyticsSummary}
+        recentInsights={recentInsights}
+        recentReports={recentReports}
+        recentExports={recentExports}
+        isLoadingDatasets={isLoadingDatasets}
+        isLoadingContext={isLoadingContext}
+        isGeneratingReport={isGeneratingReport}
+        isExportingPdf={isExportingPdf}
+        isExportingCsv={isExportingCsv}
+        datasetErrorMessage={datasetErrorMessage}
+        contextErrorMessage={contextErrorMessage}
+        actionErrorMessage={actionErrorMessage}
+        lastGeneratedReport={lastGeneratedReport}
+        lastGeneratedExport={lastGeneratedExport}
+        onSelectDataset={handleDatasetChange}
+        onSelectVersion={handleVersionChange}
+        onRefresh={() => void refreshDashboard()}
+        onGenerateReport={() => void generateReport()}
+        onExportPdf={(reportRecordId) => void exportReportPdf(reportRecordId)}
+        onExportCsv={(reportRecordId) => void exportInsightsCsv(reportRecordId)}
+        onClearFeedback={clearDashboardActionFeedback}
+      />
     </>
   );
 };
+
+const DashboardPage = () => (
+  <AnalyticsDashboardProvider>
+    <DashboardPageContent />
+  </AnalyticsDashboardProvider>
+);
 
 export default DashboardPage;

@@ -23,6 +23,14 @@ namespace AstraLab.Web.Core.Storage
             return Combine(options.MlArtifactKeyPrefix, storageKey);
         }
 
+        /// <summary>
+        /// Builds the full object key for an analytics export file.
+        /// </summary>
+        public static string BuildAnalyticsExportObjectKey(ObjectStorageOptions options, string storageKey)
+        {
+            return Combine(options.AnalyticsExportKeyPrefix, storageKey);
+        }
+
         private static string Combine(string prefix, string storageKey)
         {
             var normalizedPrefix = string.IsNullOrWhiteSpace(prefix)

@@ -442,6 +442,7 @@ namespace AstraLab.Services.ML
                         ArtifactStorageKey = experiment.Model.ArtifactStorageKey,
                         PerformanceSummaryJson = experiment.Model.PerformanceSummaryJson,
                         WarningsJson = experiment.Model.WarningsJson,
+                        ArtifactDownloadUrl = BuildArtifactDownloadUrl(experiment.Id, experiment.Model.ArtifactStorageKey),
                         Metrics = experiment.Model.Metrics
                             .OrderBy(item => item.MetricName)
                             .Select(item => new MlModelMetricDto
@@ -462,6 +463,19 @@ namespace AstraLab.Services.ML
                             .ToList()
                     }
             };
+        }
+
+        /// <summary>
+        /// Builds the authenticated artifact download URL when a stored artifact exists.
+        /// </summary>
+        private static string BuildArtifactDownloadUrl(long experimentId, string artifactStorageKey)
+        {
+            if (string.IsNullOrWhiteSpace(artifactStorageKey))
+            {
+                return null;
+            }
+
+            return $"/api/services/app/ml/experiments/{experimentId}/artifact/download";
         }
     }
 }

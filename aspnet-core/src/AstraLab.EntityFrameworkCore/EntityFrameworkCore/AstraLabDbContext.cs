@@ -3,6 +3,7 @@ using Abp.Zero.EntityFrameworkCore;
 using AstraLab.Authorization.Roles;
 using AstraLab.Authorization.Users;
 using AstraLab.Core.Domains.AI;
+using AstraLab.Core.Domains.Analytics;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Core.Domains.ML;
 using AstraLab.MultiTenancy;
@@ -57,6 +58,21 @@ namespace AstraLab.EntityFrameworkCore
         /// Gets or sets the persisted AI responses.
         /// </summary>
         public DbSet<AIResponse> AIResponses { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted analytics insights.
+        /// </summary>
+        public DbSet<InsightRecord> InsightRecords { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted stakeholder reports.
+        /// </summary>
+        public DbSet<ReportRecord> ReportRecords { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted analytics export references.
+        /// </summary>
+        public DbSet<AnalyticsExport> AnalyticsExports { get; set; }
 
         /// <summary>
         /// Gets or sets the persisted machine learning experiment runs.
@@ -345,6 +361,204 @@ namespace AstraLab.EntityFrameworkCore
 
                 entity.HasIndex(aiResponse => aiResponse.DatasetTransformationId);
                 entity.HasIndex(aiResponse => aiResponse.MLExperimentId);
+            });
+
+            modelBuilder.Entity<InsightRecord>(entity =>
+            {
+                entity.ToTable("InsightRecords");
+
+                entity.Property(insightRecord => insightRecord.Title)
+                    .IsRequired()
+                    .HasMaxLength(InsightRecord.MaxTitleLength);
+
+                entity.Property(insightRecord => insightRecord.Content)
+                    .IsRequired()
+                    .HasColumnType(InsightRecord.ContentColumnType);
+
+                entity.Property(insightRecord => insightRecord.MetadataJson)
+                    .HasColumnType(InsightRecord.MetadataJsonColumnType);
+
+                entity.HasOne(insightRecord => insightRecord.DatasetVersion)
+                    .WithMany(datasetVersion => datasetVersion.InsightRecords)
+                    .HasForeignKey(insightRecord => insightRecord.DatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(insightRecord => insightRecord.DatasetProfile)
+                    .WithMany(datasetProfile => datasetProfile.InsightRecords)
+                    .HasForeignKey(insightRecord => insightRecord.DatasetProfileId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(insightRecord => insightRecord.MLExperiment)
+                    .WithMany(mlExperiment => mlExperiment.InsightRecords)
+                    .HasForeignKey(insightRecord => insightRecord.MLExperimentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(insightRecord => insightRecord.AIResponse)
+                    .WithMany(aiResponse => aiResponse.InsightRecords)
+                    .HasForeignKey(insightRecord => insightRecord.AIResponseId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(insightRecord => new
+                {
+                    insightRecord.TenantId,
+                    insightRecord.DatasetVersionId,
+                    insightRecord.CreationTime
+                });
+
+                entity.HasIndex(insightRecord => new
+                {
+                    insightRecord.TenantId,
+                    insightRecord.MLExperimentId,
+                    insightRecord.CreationTime
+                });
+
+                entity.HasIndex(insightRecord => new
+                {
+                    insightRecord.TenantId,
+                    insightRecord.InsightSourceType,
+                    insightRecord.InsightType,
+                    insightRecord.CreationTime
+                });
+
+                entity.HasIndex(insightRecord => insightRecord.DatasetProfileId);
+                entity.HasIndex(insightRecord => insightRecord.AIResponseId);
+            });
+
+            modelBuilder.Entity<ReportRecord>(entity =>
+            {
+                entity.ToTable("ReportRecords");
+
+                entity.Property(reportRecord => reportRecord.Title)
+                    .IsRequired()
+                    .HasMaxLength(ReportRecord.MaxTitleLength);
+
+                entity.Property(reportRecord => reportRecord.Summary)
+                    .HasColumnType(ReportRecord.SummaryColumnType);
+
+                entity.Property(reportRecord => reportRecord.Content)
+                    .IsRequired()
+                    .HasColumnType(ReportRecord.ContentColumnType);
+
+                entity.Property(reportRecord => reportRecord.MetadataJson)
+                    .HasColumnType(ReportRecord.MetadataJsonColumnType);
+
+                entity.HasOne(reportRecord => reportRecord.DatasetVersion)
+                    .WithMany(datasetVersion => datasetVersion.ReportRecords)
+                    .HasForeignKey(reportRecord => reportRecord.DatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(reportRecord => reportRecord.DatasetProfile)
+                    .WithMany(datasetProfile => datasetProfile.ReportRecords)
+                    .HasForeignKey(reportRecord => reportRecord.DatasetProfileId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(reportRecord => reportRecord.MLExperiment)
+                    .WithMany(mlExperiment => mlExperiment.ReportRecords)
+                    .HasForeignKey(reportRecord => reportRecord.MLExperimentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(reportRecord => reportRecord.AIResponse)
+                    .WithMany(aiResponse => aiResponse.ReportRecords)
+                    .HasForeignKey(reportRecord => reportRecord.AIResponseId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(reportRecord => new
+                {
+                    reportRecord.TenantId,
+                    reportRecord.DatasetVersionId,
+                    reportRecord.CreationTime
+                });
+
+                entity.HasIndex(reportRecord => new
+                {
+                    reportRecord.TenantId,
+                    reportRecord.MLExperimentId,
+                    reportRecord.CreationTime
+                });
+
+                entity.HasIndex(reportRecord => new
+                {
+                    reportRecord.TenantId,
+                    reportRecord.ReportSourceType,
+                    reportRecord.ReportFormat,
+                    reportRecord.CreationTime
+                });
+
+                entity.HasIndex(reportRecord => reportRecord.DatasetProfileId);
+                entity.HasIndex(reportRecord => reportRecord.AIResponseId);
+            });
+
+            modelBuilder.Entity<AnalyticsExport>(entity =>
+            {
+                entity.ToTable("AnalyticsExports");
+
+                entity.Property(analyticsExport => analyticsExport.DisplayName)
+                    .IsRequired()
+                    .HasMaxLength(AnalyticsExport.MaxDisplayNameLength);
+
+                entity.Property(analyticsExport => analyticsExport.StorageProvider)
+                    .IsRequired()
+                    .HasMaxLength(DatasetFile.MaxStorageProviderLength);
+
+                entity.Property(analyticsExport => analyticsExport.StorageKey)
+                    .IsRequired()
+                    .HasMaxLength(DatasetFile.MaxStorageKeyLength);
+
+                entity.Property(analyticsExport => analyticsExport.ContentType)
+                    .HasMaxLength(AnalyticsExport.MaxContentTypeLength);
+
+                entity.Property(analyticsExport => analyticsExport.ChecksumSha256)
+                    .HasMaxLength(AnalyticsExport.ChecksumSha256Length);
+
+                entity.Property(analyticsExport => analyticsExport.MetadataJson)
+                    .HasColumnType(AnalyticsExport.MetadataJsonColumnType);
+
+                entity.HasOne(analyticsExport => analyticsExport.DatasetVersion)
+                    .WithMany(datasetVersion => datasetVersion.AnalyticsExports)
+                    .HasForeignKey(analyticsExport => analyticsExport.DatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(analyticsExport => analyticsExport.MLExperiment)
+                    .WithMany(mlExperiment => mlExperiment.AnalyticsExports)
+                    .HasForeignKey(analyticsExport => analyticsExport.MLExperimentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(analyticsExport => analyticsExport.InsightRecord)
+                    .WithMany(insightRecord => insightRecord.Exports)
+                    .HasForeignKey(analyticsExport => analyticsExport.InsightRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(analyticsExport => analyticsExport.ReportRecord)
+                    .WithMany(reportRecord => reportRecord.Exports)
+                    .HasForeignKey(analyticsExport => analyticsExport.ReportRecordId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(analyticsExport => new
+                {
+                    analyticsExport.TenantId,
+                    analyticsExport.DatasetVersionId,
+                    analyticsExport.CreationTime
+                });
+
+                entity.HasIndex(analyticsExport => new
+                {
+                    analyticsExport.TenantId,
+                    analyticsExport.MLExperimentId,
+                    analyticsExport.CreationTime
+                });
+
+                entity.HasIndex(analyticsExport => new
+                {
+                    analyticsExport.TenantId,
+                    analyticsExport.ExportType,
+                    analyticsExport.CreationTime
+                });
+
+                entity.HasIndex(analyticsExport => new { analyticsExport.StorageProvider, analyticsExport.StorageKey })
+                    .IsUnique();
+
+                entity.HasIndex(analyticsExport => analyticsExport.InsightRecordId);
+                entity.HasIndex(analyticsExport => analyticsExport.ReportRecordId);
             });
 
             modelBuilder.Entity<MLExperiment>(entity =>

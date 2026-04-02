@@ -381,6 +381,33 @@ namespace AstraLab.Tests.Services.ML
             exception.Message.ShouldBe("The requested ML experiment could not be found.");
         }
 
+        [Fact]
+        public async Task GetAsync_Should_Populate_Artifact_Download_Url_When_A_Model_Artifact_Exists()
+        {
+            var seeded = SeedExperimentDataset();
+            var experimentId = SeedExperiment(seeded, MLExperimentStatus.Completed, MLTaskType.Classification, "random_forest_classifier");
+
+            UsingDbContext(context =>
+            {
+                context.MLModels.Add(new MLModel
+                {
+                    TenantId = 1,
+                    MLExperimentId = experimentId,
+                    ModelType = "random_forest_classifier",
+                    ArtifactStorageProvider = "local-filesystem",
+                    ArtifactStorageKey = "artifacts/tenant-1/experiment-1/model.joblib",
+                    PerformanceSummaryJson = "{\"primaryMetric\":\"accuracy\"}"
+                });
+
+                context.SaveChanges();
+            });
+
+            var output = await _mlExperimentAppService.GetAsync(new EntityDto<long>(experimentId));
+
+            output.Model.ShouldNotBeNull();
+            output.Model.ArtifactDownloadUrl.ShouldBe($"/api/services/app/ml/experiments/{experimentId}/artifact/download");
+        }
+
         private MlExperimentSeedResult SeedExperimentDataset()
         {
             return UsingDbContext(context =>

@@ -41,5 +41,10 @@ namespace AstraLab.Services.ML.Dto
         /// Gets or sets the persisted feature importances.
         /// </summary>
         public List<MlModelFeatureImportanceDto> FeatureImportances { get; set; } = new List<MlModelFeatureImportanceDto>();
+
+        /// <summary>
+        /// Gets or sets the authenticated download URL for the stored model artifact.
+        /// </summary>
+        public string ArtifactDownloadUrl { get; set; }
     }
 }

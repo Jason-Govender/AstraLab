@@ -1,6 +1,7 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
 using System.Collections.Generic;
+using AstraLab.Core.Domains.Analytics;
 
 namespace AstraLab.Core.Domains.Datasets
 {
@@ -53,5 +54,15 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the persisted column-level profile rows for this profiling snapshot.
         /// </summary>
         public ICollection<DatasetColumnProfile> ColumnProfiles { get; set; } = new List<DatasetColumnProfile>();
+
+        /// <summary>
+        /// Gets or sets the persisted analytics insights informed by this profile.
+        /// </summary>
+        public ICollection<InsightRecord> InsightRecords { get; set; } = new List<InsightRecord>();
+
+        /// <summary>
+        /// Gets or sets the persisted reports informed by this profile.
+        /// </summary>
+        public ICollection<ReportRecord> ReportRecords { get; set; } = new List<ReportRecord>();
     }
 }

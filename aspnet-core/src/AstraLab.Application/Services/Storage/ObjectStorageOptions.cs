@@ -51,6 +51,16 @@ namespace AstraLab.Services.Storage
         public string MlArtifactKeyPrefix { get; set; } = "ml-artifacts";
 
         /// <summary>
+        /// Gets or sets the bucket used for analytics export files.
+        /// </summary>
+        public string AnalyticsExportBucketName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the object prefix used for analytics export files.
+        /// </summary>
+        public string AnalyticsExportKeyPrefix { get; set; } = "analytics-exports";
+
+        /// <summary>
         /// Gets or sets the temporary URL lifetime in seconds.
         /// </summary>
         public int PresignedUrlTtlSeconds { get; set; } = 900;

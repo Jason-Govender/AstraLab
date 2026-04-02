@@ -2,6 +2,7 @@
 using Abp.Modules;
 using Abp.Reflection.Extensions;
 using AstraLab.Authorization;
+using QuestPDF.Infrastructure;
 
 namespace AstraLab
 {
@@ -13,6 +14,7 @@ namespace AstraLab
         public override void PreInitialize()
         {
             Configuration.Authorization.Providers.Add<AstraLabAuthorizationProvider>();
+            QuestPDF.Settings.License = LicenseType.Community;
         }
 
         public override void Initialize()
