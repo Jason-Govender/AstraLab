@@ -1,10 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Abp.Application.Services.Dto;
 using Abp.Domain.Entities;
 using AstraLab.Core.Domains.AI;
-using AstraLab.Core.Domains.Analytics;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Core.Domains.ML;
 using AstraLab.Services.AI;
@@ -18,16 +18,16 @@ using Xunit;
 
 namespace AstraLab.Tests.Services.Analytics
 {
-    public class AnalyticsSummaryAppService_Tests : AstraLabTestBase
+    public class AnalyticsReportingAppService_Tests : AstraLabTestBase
     {
         private readonly IAiTextGenerationClient _aiTextGenerationClient;
-        private readonly IAnalyticsExportStorage _analyticsExportStorage;
+        private readonly InMemoryAnalyticsExportStorage _analyticsExportStorage;
         private readonly IAnalyticsAppService _analyticsAppService;
 
-        public AnalyticsSummaryAppService_Tests()
+        public AnalyticsReportingAppService_Tests()
         {
             _aiTextGenerationClient = Substitute.For<IAiTextGenerationClient>();
-            _analyticsExportStorage = Substitute.For<IAnalyticsExportStorage>();
+            _analyticsExportStorage = new InMemoryAnalyticsExportStorage();
 
             LocalIocManager.IocContainer.Register(
                 Component.For<IAiTextGenerationClient>()
@@ -43,33 +43,89 @@ namespace AstraLab.Tests.Services.Analytics
         }
 
         [Fact]
-        public async Task GetDatasetAnalyticsSummaryAsync_Should_Return_A_Full_Hybrid_Summary()
+        public async Task GenerateDatasetReportAsync_Should_Create_A_Persisted_Html_Report()
         {
-            var scenario = UsingDbContext(context =>
+            var datasetVersionId = UsingDbContext(context =>
             {
-                var dataset = CreateDataset(context, "analytics-summary-full", AbpSession.UserId.Value);
+                var dataset = CreateDataset(context, "report-generation", AbpSession.UserId.Value);
                 var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1);
                 var seeded = AddProfileData(context, datasetVersion.Id, "target", "feature_one");
+                CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.TargetColumnId, seeded.FeatureColumnId);
+                return datasetVersion.Id;
+            });
 
-                context.DatasetTransformations.Add(new DatasetTransformation
+            _aiTextGenerationClient.GenerateTextAsync(Arg.Any<AiTextGenerationRequest>())
+                .Returns(Task.FromResult(new AiTextGenerationResult
                 {
-                    TenantId = 1,
-                    SourceDatasetVersionId = datasetVersion.Id,
-                    ResultDatasetVersionId = null,
-                    TransformationType = DatasetTransformationType.RemoveDuplicates,
-                    ConfigurationJson = "{\"columns\":[\"target\"]}",
-                    ExecutionOrder = 1,
-                    ExecutedAt = new DateTime(2026, 4, 2, 14, 0, 0, DateTimeKind.Utc),
-                    SummaryJson = "{\"removedRows\":3}"
-                });
-                context.SaveChanges();
+                    Text = "Overview\nThis dataset is ready for stakeholder review.\n\nKey risks\nNull exposure remains visible.\n\nRecent changes\nRecent cleaning has reduced duplicates.\n\nML highlights\nThe latest model is promising.\n\nSuggested next steps\nValidate with a broader sample."
+                }));
+
+            var result = await _analyticsAppService.GenerateDatasetReportAsync(new GenerateDatasetReportRequest
+            {
+                DatasetVersionId = datasetVersionId
+            });
+
+            result.DatasetVersionId.ShouldBe(datasetVersionId);
+            result.Report.ReportFormat.ShouldBe(Core.Domains.Analytics.ReportFormat.Html);
+            result.Report.ReportSourceType.ShouldBe(Core.Domains.Analytics.ReportSourceType.AiGenerated);
+            result.Report.Content.ShouldContain("<h2>Dataset quality highlights</h2>");
+            result.Report.Content.ShouldContain("<h2>ML highlights</h2>");
+
+            await UsingDbContextAsync(async context =>
+            {
+                context.ReportRecords.Count().ShouldBe(1);
+                await Task.CompletedTask;
+            });
+        }
+
+        [Fact]
+        public async Task ExportDatasetReportPdfAsync_Should_Create_A_Pdf_Export_And_Associated_Report()
+        {
+            var datasetVersionId = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "report-pdf-export", AbpSession.UserId.Value);
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1);
+                var seeded = AddProfileData(context, datasetVersion.Id, "target", "feature_one");
+                CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.TargetColumnId, seeded.FeatureColumnId);
+                return datasetVersion.Id;
+            });
+
+            _aiTextGenerationClient.GenerateTextAsync(Arg.Any<AiTextGenerationRequest>())
+                .Returns(Task.FromResult(new AiTextGenerationResult
+                {
+                    Text = "Overview\nA concise exportable report.\n\nKey risks\nSome nulls remain.\n\nRecent changes\nRecent cleaning was applied.\n\nML highlights\nAccuracy is strong.\n\nSuggested next steps\nShare the current summary with stakeholders."
+                }));
+
+            var result = await _analyticsAppService.ExportDatasetReportPdfAsync(new ExportDatasetReportPdfRequest
+            {
+                DatasetVersionId = datasetVersionId
+            });
+
+            result.Export.ExportType.ShouldBe(Core.Domains.Analytics.AnalyticsExportType.Document);
+            result.Export.ReportRecordId.ShouldBe(result.Report.Id);
+            result.Export.ContentType.ShouldBe("application/pdf");
+            result.Export.DisplayName.ShouldEndWith(".pdf");
+
+            var storedBytes = _analyticsExportStorage.GetStoredContent(result.Export.StorageKey);
+            storedBytes.ShouldNotBeNull();
+            System.Text.Encoding.ASCII.GetString(storedBytes.Take(4).ToArray()).ShouldBe("%PDF");
+        }
+
+        [Fact]
+        public async Task ExportDatasetInsightsCsvAsync_Should_Create_A_Csv_Export_Without_Raw_Rows()
+        {
+            var datasetVersionId = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "report-csv-export", AbpSession.UserId.Value);
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1);
+                var seeded = AddProfileData(context, datasetVersion.Id, "target", "feature_one");
 
                 var conversation = context.AIConversations.Add(new AIConversation
                 {
                     TenantId = 1,
                     DatasetId = dataset.Id,
                     OwnerUserId = AbpSession.UserId.Value,
-                    LastInteractionTime = new DateTime(2026, 4, 2, 14, 5, 0, DateTimeKind.Utc)
+                    LastInteractionTime = DateTime.UtcNow
                 }).Entity;
                 context.SaveChanges();
 
@@ -78,164 +134,82 @@ namespace AstraLab.Tests.Services.Analytics
                     TenantId = 1,
                     AIConversationId = conversation.Id,
                     DatasetVersionId = datasetVersion.Id,
-                    ResponseContent = "Automatic dataset quality insight.",
+                    ResponseContent = "Automatic stakeholder insight.",
                     ResponseType = AIResponseType.Insight,
-                    MetadataJson = "{\"generationTrigger\":\"profilingCompleted\",\"datasetProfileId\":" + seeded.DatasetProfileId + "}",
-                    CreationTime = new DateTime(2026, 4, 2, 14, 6, 0, DateTimeKind.Utc)
-                });
-
-                context.AIResponses.Add(new AIResponse
-                {
-                    TenantId = 1,
-                    AIConversationId = conversation.Id,
-                    DatasetVersionId = datasetVersion.Id,
-                    ResponseContent = "Prioritize cleaning target and feature_one.",
-                    ResponseType = AIResponseType.Recommendation,
-                    CreationTime = new DateTime(2026, 4, 2, 14, 7, 0, DateTimeKind.Utc)
-                });
-
-                context.InsightRecords.Add(new InsightRecord
-                {
-                    TenantId = 1,
-                    DatasetVersionId = datasetVersion.Id,
-                    DatasetProfileId = seeded.DatasetProfileId,
-                    Title = "AI finding",
-                    Content = "The current profile shows moderate null exposure.",
-                    InsightType = InsightType.DataQuality,
-                    InsightSourceType = InsightSourceType.AiGenerated,
-                    CreationTime = new DateTime(2026, 4, 2, 14, 8, 0, DateTimeKind.Utc)
+                    MetadataJson = "{\"generationTrigger\":\"profilingCompleted\",\"datasetProfileId\":" + seeded.DatasetProfileId + "}"
                 });
 
                 context.SaveChanges();
-
-                var experiment = CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.TargetColumnId, seeded.FeatureColumnId);
-
-                return new
-                {
-                    DatasetVersionId = datasetVersion.Id,
-                    ExperimentId = experiment.Id
-                };
-            });
-
-            AiTextGenerationRequest capturedRequest = null;
-            _aiTextGenerationClient.GenerateTextAsync(Arg.Do<AiTextGenerationRequest>(item => capturedRequest = item))
-                .Returns(Task.FromResult(new AiTextGenerationResult
-                {
-                    Text = "Overview\nHealthy enough to explore.\n\nKey risks\nNull exposure in target.\n\nRecent changes\nDuplicates were removed.\n\nML highlights\nAccuracy looks solid.\n\nSuggested next steps\nValidate with more data.",
-                    Provider = "groq",
-                    Model = "llama-test"
-                }));
-
-            var result = await _analyticsAppService.GetDatasetAnalyticsSummaryAsync(new EntityDto<long>(scenario.DatasetVersionId));
-
-            result.DatasetVersionId.ShouldBe(scenario.DatasetVersionId);
-            result.QualityHighlights.HasProfile.ShouldBeTrue();
-            result.QualityHighlights.HighRiskColumns.Count.ShouldBeGreaterThan(0);
-            result.TransformationOutcomes.Count.ShouldBe(1);
-            result.AiFindings.StoredAiResponseCount.ShouldBe(2);
-            result.AiFindings.StoredInsightRecordCount.ShouldBe(1);
-            result.AiFindings.HasAutomaticInsight.ShouldBeTrue();
-            result.MlExperimentHighlights.HasCompletedExperiment.ShouldBeTrue();
-            result.MlExperimentHighlights.MLExperimentId.ShouldBe(scenario.ExperimentId);
-            result.MlExperimentHighlights.PrimaryMetricName.ShouldBe("accuracy");
-            result.MlExperimentHighlights.PrimaryMetricValue.ShouldBe(0.91m);
-            result.DashboardSummary.HasCompletedMlExperiment.ShouldBeTrue();
-            result.DashboardSummary.RecentTransformationCount.ShouldBe(1);
-            result.Narrative.Status.ShouldBe(AnalyticsNarrativeStatus.Generated);
-            result.Narrative.Content.ShouldContain("Overview");
-
-            capturedRequest.ShouldNotBeNull();
-            capturedRequest.UserMessage.ShouldContain("Aggregated analytics summary JSON:");
-            capturedRequest.UserMessage.ShouldNotContain("SchemaJson");
-            capturedRequest.UserMessage.ShouldNotContain("TrainingConfigurationJson");
-        }
-
-        [Fact]
-        public async Task GetDatasetAnalyticsSummaryAsync_Should_Return_A_Partial_Summary_When_Ai_And_Ml_Data_Are_Absent()
-        {
-            var datasetVersionId = UsingDbContext(context =>
-            {
-                var dataset = CreateDataset(context, "analytics-summary-partial", AbpSession.UserId.Value);
-                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1);
-                AddProfileData(context, datasetVersion.Id, "amount", "segment");
                 return datasetVersion.Id;
             });
 
             _aiTextGenerationClient.GenerateTextAsync(Arg.Any<AiTextGenerationRequest>())
                 .Returns(Task.FromResult(new AiTextGenerationResult
                 {
-                    Text = "Overview\nThe dataset is ready for initial review.\n\nKey risks\nSome nulls remain.\n\nRecent changes\nNo recent transformations.\n\nML highlights\nNo completed experiments yet.\n\nSuggested next steps\nProfile columns with the highest nulls."
+                    Text = "Overview\nCSV-ready narrative.\n\nKey risks\nNulls remain.\n\nRecent changes\nNo transformations yet.\n\nML highlights\nNo ML run yet.\n\nSuggested next steps\nProfile again after cleaning."
                 }));
 
-            var result = await _analyticsAppService.GetDatasetAnalyticsSummaryAsync(new EntityDto<long>(datasetVersionId));
+            var result = await _analyticsAppService.ExportDatasetInsightsCsvAsync(new ExportDatasetInsightsCsvRequest
+            {
+                DatasetVersionId = datasetVersionId
+            });
 
-            result.QualityHighlights.HasProfile.ShouldBeTrue();
-            result.TransformationOutcomes.ShouldBeEmpty();
-            result.AiFindings.StoredAiResponseCount.ShouldBe(0);
-            result.AiFindings.StoredInsightRecordCount.ShouldBe(0);
-            result.MlExperimentHighlights.HasCompletedExperiment.ShouldBeFalse();
-            result.DashboardSummary.HasCompletedMlExperiment.ShouldBeFalse();
-            result.Narrative.Status.ShouldBe(AnalyticsNarrativeStatus.Generated);
+            result.Export.ExportType.ShouldBe(Core.Domains.Analytics.AnalyticsExportType.Spreadsheet);
+            result.Export.ContentType.ShouldBe("text/csv");
+
+            var csv = System.Text.Encoding.UTF8.GetString(_analyticsExportStorage.GetStoredContent(result.Export.StorageKey));
+            csv.ShouldContain("section,itemType,name,value,detail,secondaryValue");
+            csv.ShouldContain("quality,highRiskColumn,target");
+            csv.ShouldContain("ai,AIResponse,Insight");
+            csv.ShouldNotContain("row 1");
         }
 
         [Fact]
-        public async Task GetDatasetDashboardSummaryAsync_Should_Return_A_Compact_View_Without_Invoking_The_Narrative_Path()
+        public async Task ExportDatasetReportPdfAsync_Should_Not_Persist_Partial_Records_When_Storage_Fails()
         {
             var datasetVersionId = UsingDbContext(context =>
             {
-                var dataset = CreateDataset(context, "analytics-dashboard", AbpSession.UserId.Value);
+                var dataset = CreateDataset(context, "report-storage-failure", AbpSession.UserId.Value);
                 var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1);
-                var seeded = AddProfileData(context, datasetVersion.Id, "target", "feature_one");
-                CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.TargetColumnId, seeded.FeatureColumnId);
+                AddProfileData(context, datasetVersion.Id, "target", "feature_one");
                 return datasetVersion.Id;
             });
 
+            _analyticsExportStorage.FailOnStore = true;
             _aiTextGenerationClient.GenerateTextAsync(Arg.Any<AiTextGenerationRequest>())
-                .Returns<Task<AiTextGenerationResult>>(_ => throw new InvalidOperationException("Narrative generation should not run for the dashboard endpoint."));
+                .Returns(Task.FromResult(new AiTextGenerationResult
+                {
+                    Text = "Overview\nFailure path.\n\nKey risks\nStorage issue.\n\nRecent changes\nNone.\n\nML highlights\nNone.\n\nSuggested next steps\nRetry later."
+                }));
 
-            var result = await _analyticsAppService.GetDatasetDashboardSummaryAsync(new EntityDto<long>(datasetVersionId));
+            await Should.ThrowAsync<InvalidOperationException>(() =>
+                _analyticsAppService.ExportDatasetReportPdfAsync(new ExportDatasetReportPdfRequest
+                {
+                    DatasetVersionId = datasetVersionId
+                }));
 
-            result.DatasetVersionId.ShouldBe(datasetVersionId);
-            result.RowCount.ShouldBe(12);
-            result.ColumnCount.ShouldBe(2);
-            result.HasCompletedMlExperiment.ShouldBeTrue();
-            result.PrimaryMetricName.ShouldBe("accuracy");
-            result.PrimaryMetricValue.ShouldBe(0.91m);
-        }
-
-        [Fact]
-        public async Task GetDatasetAnalyticsSummaryAsync_Should_Not_Fail_When_Narrative_Generation_Fails()
-        {
-            var datasetVersionId = UsingDbContext(context =>
+            await UsingDbContextAsync(async context =>
             {
-                var dataset = CreateDataset(context, "analytics-summary-failing-narrative", AbpSession.UserId.Value);
-                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1);
-                AddProfileData(context, datasetVersion.Id, "amount", "segment");
-                return datasetVersion.Id;
+                context.ReportRecords.Count().ShouldBe(0);
+                context.AnalyticsExports.Count().ShouldBe(0);
+                await Task.CompletedTask;
             });
-
-            _aiTextGenerationClient.GenerateTextAsync(Arg.Any<AiTextGenerationRequest>())
-                .Returns<Task<AiTextGenerationResult>>(_ => throw new InvalidOperationException("Provider unavailable."));
-
-            var result = await _analyticsAppService.GetDatasetAnalyticsSummaryAsync(new EntityDto<long>(datasetVersionId));
-
-            result.QualityHighlights.HasProfile.ShouldBeTrue();
-            result.Narrative.Status.ShouldBe(AnalyticsNarrativeStatus.Failed);
-            result.Narrative.Content.ShouldBeNull();
-            result.Narrative.FailureMessage.ShouldBe("Analytics narrative generation is currently unavailable.");
         }
 
         [Fact]
-        public async Task GetDatasetAnalyticsSummaryAsync_Should_Reject_A_Dataset_Version_From_A_Different_Owner()
+        public async Task GenerateDatasetReportAsync_Should_Reject_A_Dataset_Version_From_A_Different_Owner()
         {
             var datasetVersionId = UsingDbContext(context =>
             {
-                var dataset = CreateDataset(context, "analytics-summary-foreign-owner", AbpSession.UserId.Value + 25);
+                var dataset = CreateDataset(context, "report-foreign-owner", AbpSession.UserId.Value + 99);
                 return CreateDatasetVersion(context, dataset.Id, 1).Id;
             });
 
             await Should.ThrowAsync<EntityNotFoundException>(() =>
-                _analyticsAppService.GetDatasetAnalyticsSummaryAsync(new EntityDto<long>(datasetVersionId)));
+                _analyticsAppService.GenerateDatasetReportAsync(new GenerateDatasetReportRequest
+                {
+                    DatasetVersionId = datasetVersionId
+                }));
         }
 
         private static Dataset CreateDataset(AstraLab.EntityFrameworkCore.AstraLabDbContext context, string name, long ownerUserId)
@@ -267,8 +241,7 @@ namespace AstraLab.Tests.Services.Analytics
                 RowCount = 12,
                 ColumnCount = 2,
                 SchemaJson = "{\"columns\":[{\"name\":\"target\"},{\"name\":\"feature_one\"}]}",
-                SizeBytes = 512,
-                CreationTime = new DateTime(2026, 4, 2, 13, 0, 0, DateTimeKind.Utc)
+                SizeBytes = 512
             }).Entity;
 
             context.SaveChanges();
@@ -360,7 +333,7 @@ namespace AstraLab.Tests.Services.Analytics
                 Status = MLExperimentStatus.Completed,
                 TaskType = MLTaskType.Classification,
                 AlgorithmKey = "random_forest_classifier",
-                TrainingConfigurationJson = "{\"testSize\":0.2,\"maxDepth\":5}",
+                TrainingConfigurationJson = "{\"testSize\":0.2}",
                 ExecutedAt = new DateTime(2026, 4, 2, 15, 0, 0, DateTimeKind.Utc),
                 StartedAtUtc = new DateTime(2026, 4, 2, 15, 1, 0, DateTimeKind.Utc),
                 CompletedAtUtc = new DateTime(2026, 4, 2, 15, 2, 0, DateTimeKind.Utc),
@@ -400,14 +373,6 @@ namespace AstraLab.Tests.Services.Analytics
                 MetricValue = 0.91m
             });
 
-            context.MLModelMetrics.Add(new MLModelMetric
-            {
-                TenantId = 1,
-                MLModelId = model.Id,
-                MetricName = "f1",
-                MetricValue = 0.88m
-            });
-
             context.MLModelFeatureImportances.Add(new MLModelFeatureImportance
             {
                 TenantId = 1,
@@ -435,6 +400,51 @@ namespace AstraLab.Tests.Services.Analytics
             public long FeatureColumnId { get; }
 
             public long DatasetProfileId { get; }
+        }
+
+        private class InMemoryAnalyticsExportStorage : IAnalyticsExportStorage
+        {
+            private readonly Dictionary<string, byte[]> _contents = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+
+            public bool FailOnStore { get; set; }
+
+            public Task<StoredAnalyticsExportResult> StoreAsync(StoreAnalyticsExportRequest request)
+            {
+                if (FailOnStore)
+                {
+                    throw new InvalidOperationException("Analytics export storage is unavailable.");
+                }
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    request.Content.CopyTo(memoryStream);
+                    _contents[request.StorageKey] = memoryStream.ToArray();
+                }
+
+                return Task.FromResult(new StoredAnalyticsExportResult
+                {
+                    StorageProvider = "memory",
+                    StorageKey = request.StorageKey
+                });
+            }
+
+            public Task<Stream> OpenReadAsync(OpenReadAnalyticsExportRequest request)
+            {
+                return Task.FromResult<Stream>(new MemoryStream(GetStoredContent(request.StorageKey), writable: false));
+            }
+
+            public Task DeleteAsync(DeleteAnalyticsExportRequest request)
+            {
+                _contents.Remove(request.StorageKey);
+                return Task.CompletedTask;
+            }
+
+            public byte[] GetStoredContent(string storageKey)
+            {
+                return _contents.TryGetValue(storageKey, out var content)
+                    ? content
+                    : null;
+            }
         }
     }
 }

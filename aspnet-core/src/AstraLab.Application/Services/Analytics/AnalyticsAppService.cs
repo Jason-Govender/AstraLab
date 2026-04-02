@@ -20,6 +20,8 @@ namespace AstraLab.Services.Analytics
     [AbpAuthorize(PermissionNames.Pages_Datasets)]
     public class AnalyticsAppService : AstraLabAppServiceBase, IAnalyticsAppService
     {
+        private readonly IAnalyticsReportGenerator _analyticsReportGenerator;
+        private readonly IAnalyticsExportGenerator _analyticsExportGenerator;
         private readonly IAnalyticsSummaryBuilder _analyticsSummaryBuilder;
         private readonly IRepository<InsightRecord, long> _insightRecordRepository;
         private readonly IRepository<ReportRecord, long> _reportRecordRepository;
@@ -30,17 +32,82 @@ namespace AstraLab.Services.Analytics
         /// Initializes a new instance of the <see cref="AnalyticsAppService"/> class.
         /// </summary>
         public AnalyticsAppService(
+            IAnalyticsReportGenerator analyticsReportGenerator,
+            IAnalyticsExportGenerator analyticsExportGenerator,
             IAnalyticsSummaryBuilder analyticsSummaryBuilder,
             IRepository<InsightRecord, long> insightRecordRepository,
             IRepository<ReportRecord, long> reportRecordRepository,
             IRepository<AnalyticsExport, long> analyticsExportRepository,
             IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker)
         {
+            _analyticsReportGenerator = analyticsReportGenerator;
+            _analyticsExportGenerator = analyticsExportGenerator;
             _analyticsSummaryBuilder = analyticsSummaryBuilder;
             _insightRecordRepository = insightRecordRepository;
             _reportRecordRepository = reportRecordRepository;
             _analyticsExportRepository = analyticsExportRepository;
             _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
+        }
+
+        /// <summary>
+        /// Generates and persists a stakeholder-facing analytics report for the selected dataset version.
+        /// </summary>
+        public async Task<GeneratedDatasetReportResultDto> GenerateDatasetReportAsync(GenerateDatasetReportRequest input)
+        {
+            var generatedReport = await _analyticsReportGenerator.GenerateAsync(input.DatasetVersionId, GetRequiredTenantId(), AbpSession.GetUserId());
+
+            return new GeneratedDatasetReportResultDto
+            {
+                DatasetVersionId = generatedReport.ReportRecord.DatasetVersionId,
+                MLExperimentId = generatedReport.ReportRecord.MLExperimentId,
+                Report = ObjectMapper.Map<ReportRecordDto>(generatedReport.ReportRecord)
+            };
+        }
+
+        /// <summary>
+        /// Generates and persists a PDF export for the selected dataset version report workflow.
+        /// </summary>
+        public async Task<GeneratedAnalyticsExportResultDto> ExportDatasetReportPdfAsync(ExportDatasetReportPdfRequest input)
+        {
+            var analyticsExport = await _analyticsExportGenerator.ExportReportPdfAsync(
+                input.DatasetVersionId,
+                input.ReportRecordId,
+                GetRequiredTenantId(),
+                AbpSession.GetUserId());
+
+            await CurrentUnitOfWork.SaveChangesAsync();
+            var report = await GetValidatedReportAsync(analyticsExport.ReportRecordId.Value, GetRequiredTenantId(), AbpSession.GetUserId());
+
+            return new GeneratedAnalyticsExportResultDto
+            {
+                DatasetVersionId = analyticsExport.DatasetVersionId,
+                MLExperimentId = analyticsExport.MLExperimentId,
+                Report = ObjectMapper.Map<ReportRecordDto>(report),
+                Export = ObjectMapper.Map<AnalyticsExportDto>(analyticsExport)
+            };
+        }
+
+        /// <summary>
+        /// Generates and persists a CSV export of structured analytics highlights for the selected dataset version.
+        /// </summary>
+        public async Task<GeneratedAnalyticsExportResultDto> ExportDatasetInsightsCsvAsync(ExportDatasetInsightsCsvRequest input)
+        {
+            var analyticsExport = await _analyticsExportGenerator.ExportInsightsCsvAsync(
+                input.DatasetVersionId,
+                input.ReportRecordId,
+                GetRequiredTenantId(),
+                AbpSession.GetUserId());
+
+            await CurrentUnitOfWork.SaveChangesAsync();
+            var report = await GetValidatedReportAsync(analyticsExport.ReportRecordId.Value, GetRequiredTenantId(), AbpSession.GetUserId());
+
+            return new GeneratedAnalyticsExportResultDto
+            {
+                DatasetVersionId = analyticsExport.DatasetVersionId,
+                MLExperimentId = analyticsExport.MLExperimentId,
+                Report = ObjectMapper.Map<ReportRecordDto>(report),
+                Export = ObjectMapper.Map<AnalyticsExportDto>(analyticsExport)
+            };
         }
 
         /// <summary>

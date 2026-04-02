@@ -11,6 +11,21 @@ namespace AstraLab.Services.Analytics
     public interface IAnalyticsAppService : IApplicationService
     {
         /// <summary>
+        /// Generates and persists a stakeholder-facing analytics report for the selected dataset version.
+        /// </summary>
+        Task<GeneratedDatasetReportResultDto> GenerateDatasetReportAsync(GenerateDatasetReportRequest input);
+
+        /// <summary>
+        /// Generates and persists a PDF export for the selected dataset version report workflow.
+        /// </summary>
+        Task<GeneratedAnalyticsExportResultDto> ExportDatasetReportPdfAsync(ExportDatasetReportPdfRequest input);
+
+        /// <summary>
+        /// Generates and persists a CSV export of structured analytics highlights for the selected dataset version.
+        /// </summary>
+        Task<GeneratedAnalyticsExportResultDto> ExportDatasetInsightsCsvAsync(ExportDatasetInsightsCsvRequest input);
+
+        /// <summary>
         /// Gets the unified analytics summary for the selected dataset version.
         /// </summary>
         Task<DatasetAnalyticsSummaryDto> GetDatasetAnalyticsSummaryAsync(EntityDto<long> datasetVersionId);
