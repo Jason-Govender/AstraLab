@@ -2,6 +2,7 @@
 using Abp.Zero.EntityFrameworkCore;
 using AstraLab.Authorization.Roles;
 using AstraLab.Authorization.Users;
+using AstraLab.Core.Domains.AI;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Core.Domains.ML;
 using AstraLab.MultiTenancy;
@@ -46,6 +47,16 @@ namespace AstraLab.EntityFrameworkCore
         /// Gets or sets the persisted transformation history rows for dataset version processing.
         /// </summary>
         public DbSet<DatasetTransformation> DatasetTransformations { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted AI conversation threads.
+        /// </summary>
+        public DbSet<AIConversation> AIConversations { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted AI responses.
+        /// </summary>
+        public DbSet<AIResponse> AIResponses { get; set; }
 
         /// <summary>
         /// Gets or sets the persisted machine learning experiment runs.
@@ -268,6 +279,66 @@ namespace AstraLab.EntityFrameworkCore
                     .IsUnique();
 
                 entity.HasIndex(datasetTransformation => new { datasetTransformation.TenantId, datasetTransformation.ExecutedAt });
+            });
+
+            modelBuilder.Entity<AIConversation>(entity =>
+            {
+                entity.ToTable("AIConversations");
+
+                entity.HasOne(aiConversation => aiConversation.Dataset)
+                    .WithMany(dataset => dataset.AIConversations)
+                    .HasForeignKey(aiConversation => aiConversation.DatasetId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(aiConversation => new
+                {
+                    aiConversation.TenantId,
+                    aiConversation.DatasetId,
+                    aiConversation.OwnerUserId,
+                    aiConversation.LastInteractionTime
+                });
+            });
+
+            modelBuilder.Entity<AIResponse>(entity =>
+            {
+                entity.ToTable("AIResponses");
+
+                entity.Property(aiResponse => aiResponse.UserQuery)
+                    .HasColumnType(AIResponse.UserQueryColumnType);
+
+                entity.Property(aiResponse => aiResponse.ResponseContent)
+                    .IsRequired()
+                    .HasColumnType(AIResponse.ResponseContentColumnType);
+
+                entity.Property(aiResponse => aiResponse.MetadataJson)
+                    .HasColumnType(AIResponse.MetadataJsonColumnType);
+
+                entity.HasOne(aiResponse => aiResponse.AIConversation)
+                    .WithMany(aiConversation => aiConversation.Responses)
+                    .HasForeignKey(aiResponse => aiResponse.AIConversationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(aiResponse => aiResponse.DatasetVersion)
+                    .WithMany(datasetVersion => datasetVersion.AIResponses)
+                    .HasForeignKey(aiResponse => aiResponse.DatasetVersionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(aiResponse => aiResponse.DatasetTransformation)
+                    .WithMany(datasetTransformation => datasetTransformation.AIResponses)
+                    .HasForeignKey(aiResponse => aiResponse.DatasetTransformationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(aiResponse => new { aiResponse.AIConversationId, aiResponse.CreationTime });
+
+                entity.HasIndex(aiResponse => new
+                {
+                    aiResponse.TenantId,
+                    aiResponse.DatasetVersionId,
+                    aiResponse.ResponseType,
+                    aiResponse.CreationTime
+                });
+
+                entity.HasIndex(aiResponse => aiResponse.DatasetTransformationId);
             });
 
             modelBuilder.Entity<MLExperiment>(entity =>

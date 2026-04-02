@@ -1,6 +1,7 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
 using System.Collections.Generic;
+using AstraLab.Core.Domains.AI;
 using AstraLab.Core.Domains.ML;
 
 namespace AstraLab.Core.Domains.Datasets
@@ -99,5 +100,10 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the persisted machine learning experiment runs for this dataset version.
         /// </summary>
         public ICollection<MLExperiment> MlExperiments { get; set; } = new List<MLExperiment>();
+
+        /// <summary>
+        /// Gets or sets the persisted AI responses grounded in this dataset version.
+        /// </summary>
+        public ICollection<AIResponse> AIResponses { get; set; } = new List<AIResponse>();
     }
 }

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
+using AstraLab.Core.Domains.AI;
 
 namespace AstraLab.Core.Domains.Datasets
 {
@@ -68,5 +70,10 @@ namespace AstraLab.Core.Domains.Datasets
         /// Gets or sets the serialized summary payload when extra execution notes are available.
         /// </summary>
         public string SummaryJson { get; set; }
+
+        /// <summary>
+        /// Gets or sets the persisted AI responses optionally linked to this transformation.
+        /// </summary>
+        public ICollection<AIResponse> AIResponses { get; set; } = new List<AIResponse>();
     }
 }
