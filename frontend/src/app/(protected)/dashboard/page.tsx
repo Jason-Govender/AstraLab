@@ -200,7 +200,10 @@ const DashboardPageContent = () => {
         lastGeneratedExport={lastGeneratedExport}
         onSelectDataset={handleDatasetChange}
         onSelectVersion={handleVersionChange}
-        onRefresh={() => void refreshDashboard()}
+        onRefresh={() => {
+          void getRecentDatasets();
+          void refreshDashboard();
+        }}
         onGenerateReport={() => void generateReport()}
         onExportPdf={(reportRecordId) => void exportReportPdf(reportRecordId)}
         onExportCsv={(reportRecordId) => void exportInsightsCsv(reportRecordId)}

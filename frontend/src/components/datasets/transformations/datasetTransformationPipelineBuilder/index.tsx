@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Card, Empty, Select, Typography } from "antd";
+import { Button, Card, Select, Typography } from "antd";
 import {
   DEFAULT_DATASET_TRANSFORMATION_STEP_TYPE,
   DATASET_TRANSFORMATION_TYPE_OPTIONS,
@@ -11,6 +11,8 @@ import type {
   DatasetTransformationBuilderStep,
   DatasetTransformationType,
 } from "@/types/datasets";
+import { WorkspaceEmptyState } from "@/components/workspaceShell/WorkspaceEmptyState";
+import { WorkspaceFeedbackAlert } from "@/components/workspaceShell/WorkspaceFeedbackAlert";
 import { DatasetTransformationStepCard } from "../datasetTransformationStepCard";
 import { useStyles } from "./style";
 
@@ -66,12 +68,19 @@ export const DatasetTransformationPipelineBuilder = ({
               value: option.value,
             }))}
             onChange={setNextStepType}
+            disabled={isSubmitting}
           />
-          <Button onClick={() => onAddStep(nextStepType)}>Add Step</Button>
+          <Button
+            onClick={() => onAddStep(nextStepType)}
+            disabled={isSubmitting}
+          >
+            Add Step
+          </Button>
           <Button
             type="primary"
             size="large"
             loading={isSubmitting}
+            disabled={steps.length === 0 || isSubmitting}
             onClick={() => void onSubmit()}
           >
             Run Transformation
@@ -79,20 +88,32 @@ export const DatasetTransformationPipelineBuilder = ({
         </div>
       </div>
 
+      {isSubmitting ? (
+        <WorkspaceFeedbackAlert
+          type="info"
+          title="Currently running"
+          description="AstraLab is executing the transformation pipeline and profiling the processed result. This can take a few moments."
+        />
+      ) : null}
+
       {errorMessage ? (
-        <Alert
+        <WorkspaceFeedbackAlert
           type="error"
-          showIcon
-          message="Transformation failed"
+          title="Action failed"
           description={errorMessage}
           className={styles.alert}
+          actionLabel={steps.length > 0 ? "Try again" : undefined}
+          onAction={
+            steps.length > 0 ? () => void onSubmit() : undefined
+          }
         />
       ) : null}
 
       {steps.length === 0 ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        <WorkspaceEmptyState
+          title="Nothing here yet"
           description="Add one or more transformation steps to build the pipeline."
+          isContained={false}
         />
       ) : (
         <div className={styles.steps}>

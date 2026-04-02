@@ -19,7 +19,7 @@ const { Paragraph, Title } = Typography;
 const DatasetUploadContent = () => {
   const { styles } = useStyles();
   const router = useRouter();
-  const { uploadRawDataset } = useDatasetIngestionActions();
+  const { resetUpload, uploadRawDataset } = useDatasetIngestionActions();
   const { isUploading, errorMessage, uploadResult } = useDatasetIngestionState();
 
   useEffect(() => {
@@ -63,6 +63,7 @@ const DatasetUploadContent = () => {
           <DatasetUploadForm
             isSubmitting={isUploading}
             errorMessage={errorMessage}
+            onInteraction={resetUpload}
             onSubmit={handleSubmit}
           />
 
@@ -74,17 +75,19 @@ const DatasetUploadContent = () => {
         <div className={styles.sideColumn}>
           <Card className={styles.helperCard}>
             <Title level={4} className={styles.helperTitle}>
-              Ingestion Notes
+              Before you upload
             </Title>
             <Paragraph className={styles.helperText}>
-              The backend accepts CSV and JSON uploads only.
+              Use a clean CSV or JSON file with stable headers if you want profiling, exploration, and ML setup to feel predictable on the first pass.
             </Paragraph>
             <Paragraph className={styles.helperText}>
-              Every successful upload creates a dataset, an initial raw version, stored raw file metadata, extracted column/schema records, and a profiling snapshot.
+              The upload button is the moment the file is actually sent. Selecting a file only prepares it locally so you can review what will be submitted first.
             </Paragraph>
-            <Paragraph className={styles.helperText}>
-              Validation and profiling outcomes come directly from the backend so the UI stays aligned with the canonical rules.
-            </Paragraph>
+            <ul className={styles.helperList}>
+              <li>Every successful upload creates the dataset, the first raw version, extracted schema records, and a profiling snapshot.</li>
+              <li>Validation and profiling come from the backend, so this screen stays aligned with the platform’s canonical ingestion rules.</li>
+              <li>You’ll land on dataset details automatically once the new version is ready.</li>
+            </ul>
           </Card>
         </div>
       </div>

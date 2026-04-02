@@ -12,6 +12,7 @@ import { DatasetTransformationPipelineBuilder } from "@/components/datasets/tran
 import { DatasetTransformationResultState } from "@/components/datasets/transformations/datasetTransformationResultState";
 import { DatasetTransformationSourceVersionSelector } from "@/components/datasets/transformations/datasetTransformationSourceVersionSelector";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import {
   DatasetDetailsProvider,
   useDatasetDetailsActions,
@@ -177,7 +178,9 @@ const DatasetTransformationBuilderContent = () => {
         />
       ) : null}
 
-      {!details && !isError ? <Card loading className={styles.loadingCard} /> : null}
+      {!details && !isError ? (
+        <WorkspaceLoadingCard className={styles.loadingCard} />
+      ) : null}
 
       {details ? (
         <div className={styles.pageGrid}>

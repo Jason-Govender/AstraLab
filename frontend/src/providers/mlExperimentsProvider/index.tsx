@@ -12,6 +12,7 @@ import type { CreateMlExperimentRequest, MlExperiment } from "@/types/ml";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 import {
   clearExperimentsAction,
+  clearFeedbackAction,
   loadExperimentsError,
   loadExperimentsPending,
   loadExperimentsSuccess,
@@ -92,6 +93,8 @@ export const MlExperimentsProvider = ({ children }: PropsWithChildren) => {
       dispatch(
         submitExperimentSuccess({
           selectedExperimentId: experiment.id,
+          lastMutationMessage:
+            "The ML run has been queued. AstraLab will keep refreshing this experiment while it is still active.",
         }),
       );
       await loadExperiments(request.datasetVersionId, experiment.id);
@@ -116,7 +119,13 @@ export const MlExperimentsProvider = ({ children }: PropsWithChildren) => {
 
     try {
       const experiment = await cancelMlExperiment(experimentId);
-      dispatch(mutationSuccess({ selectedExperimentId: experiment.id }));
+      dispatch(
+        mutationSuccess({
+          selectedExperimentId: experiment.id,
+          lastMutationMessage:
+            "The selected ML experiment was cancelled successfully.",
+        }),
+      );
       await loadExperiments(state.currentDatasetVersionId, experiment.id);
     } catch (error) {
       dispatch(
@@ -139,7 +148,13 @@ export const MlExperimentsProvider = ({ children }: PropsWithChildren) => {
 
     try {
       const experiment = await retryMlExperiment(experimentId);
-      dispatch(mutationSuccess({ selectedExperimentId: experiment.id }));
+      dispatch(
+        mutationSuccess({
+          selectedExperimentId: experiment.id,
+          lastMutationMessage:
+            "The selected ML experiment was retried and added back to the active queue.",
+        }),
+      );
       await loadExperiments(state.currentDatasetVersionId, experiment.id);
     } catch (error) {
       dispatch(
@@ -161,6 +176,10 @@ export const MlExperimentsProvider = ({ children }: PropsWithChildren) => {
     await loadExperiments(state.currentDatasetVersionId, state.selectedExperimentId);
   };
 
+  const clearFeedback = () => {
+    dispatch(clearFeedbackAction());
+  };
+
   return (
     <MlExperimentsStateContext.Provider value={state}>
       <MlExperimentsActionContext.Provider
@@ -172,6 +191,7 @@ export const MlExperimentsProvider = ({ children }: PropsWithChildren) => {
           cancelExperiment,
           retryExperiment,
           refreshExperiments,
+          clearFeedback,
         }}
       >
         {children}

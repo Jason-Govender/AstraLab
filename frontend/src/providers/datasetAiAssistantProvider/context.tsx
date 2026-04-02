@@ -41,10 +41,11 @@ export interface IDatasetAiAssistantActionContext {
   generateSummary: (datasetVersionId: number) => Promise<void>;
   generateInsights: (datasetVersionId: number) => Promise<void>;
   generateCleaningRecommendations: (datasetVersionId: number) => Promise<void>;
-  askQuestion: (request: IDatasetAiAssistantAskRequest) => Promise<void>;
+  askQuestion: (request: IDatasetAiAssistantAskRequest) => Promise<boolean>;
   getConversations: (request: GetDatasetAiConversationsRequest) => Promise<void>;
   getResponses: (request: GetDatasetAiResponsesRequest) => Promise<void>;
   setActiveConversation: (conversationId?: number) => void;
+  clearFeedback: () => void;
   clearConversationState: () => void;
 }
 

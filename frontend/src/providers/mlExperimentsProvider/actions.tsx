@@ -12,6 +12,7 @@ export enum MlExperimentsActionEnums {
   mutationSuccess = "ML_EXPERIMENTS_MUTATION_SUCCESS",
   mutationError = "ML_EXPERIMENTS_MUTATION_ERROR",
   selectExperiment = "ML_EXPERIMENTS_SELECT",
+  clearFeedback = "ML_EXPERIMENTS_CLEAR_FEEDBACK",
   clearExperiments = "ML_EXPERIMENTS_CLEAR",
 }
 
@@ -61,6 +62,7 @@ export const submitExperimentPending = (): MlExperimentsAction => ({
     isSubmittingExperiment: true,
     isError: false,
     errorMessage: undefined,
+    lastMutationMessage: undefined,
   },
 });
 
@@ -82,6 +84,7 @@ export const mutationPending = (): MlExperimentsAction => ({
     isMutatingExperiment: true,
     isError: false,
     errorMessage: undefined,
+    lastMutationMessage: undefined,
   },
 });
 
@@ -118,6 +121,15 @@ export const selectExperimentAction = (
   },
 });
 
+export const clearFeedbackAction = (): MlExperimentsAction => ({
+  type: MlExperimentsActionEnums.clearFeedback,
+  payload: {
+    isError: false,
+    errorMessage: undefined,
+    lastMutationMessage: undefined,
+  },
+});
+
 export const clearExperimentsAction = (): MlExperimentsAction => ({
   type: MlExperimentsActionEnums.clearExperiments,
   payload: {
@@ -126,6 +138,7 @@ export const clearExperimentsAction = (): MlExperimentsAction => ({
     isMutatingExperiment: false,
     isError: false,
     errorMessage: undefined,
+    lastMutationMessage: undefined,
     currentDatasetVersionId: undefined,
     selectedExperimentId: undefined,
     experiments: [],

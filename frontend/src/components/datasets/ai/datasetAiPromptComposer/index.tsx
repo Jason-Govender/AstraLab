@@ -11,13 +11,15 @@ interface DatasetAiPromptComposerProps {
   datasetVersionId?: number;
   activeConversationId?: number;
   isSubmitting?: boolean;
-  onSubmit: (question: string) => Promise<void>;
+  onInteraction?: () => void;
+  onSubmit: (question: string) => Promise<boolean>;
 }
 
 export const DatasetAiPromptComposer = ({
   datasetVersionId,
   activeConversationId,
   isSubmitting = false,
+  onInteraction,
   onSubmit,
 }: DatasetAiPromptComposerProps) => {
   const { styles } = useStyles();
@@ -28,8 +30,11 @@ export const DatasetAiPromptComposer = ({
       return;
     }
 
-    await onSubmit(question.trim());
-    setQuestion("");
+    const didSubmit = await onSubmit(question.trim());
+
+    if (didSubmit) {
+      setQuestion("");
+    }
   };
 
   return (
@@ -49,7 +54,10 @@ export const DatasetAiPromptComposer = ({
             ? "Ask a follow-up question about this dataset version"
             : "Ask a question about this dataset version"
         }
-        onChange={(event) => setQuestion(event.target.value)}
+        onChange={(event) => {
+          onInteraction?.();
+          setQuestion(event.target.value);
+        }}
       />
       <div className={styles.actions}>
         <Button

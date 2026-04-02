@@ -1,8 +1,8 @@
 "use client";
 
-import { Alert } from "antd";
 import type { TransformDatasetVersionResult } from "@/types/datasets";
 import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetProfileSummaryCard";
+import { WorkspaceFeedbackAlert } from "@/components/workspaceShell/WorkspaceFeedbackAlert";
 import type { DatasetProfileOverview } from "@/utils/datasets";
 import { useStyles } from "./style";
 
@@ -28,10 +28,9 @@ export const DatasetTransformationResultState = ({
 
   return (
     <div className={styles.stack}>
-      <Alert
+      <WorkspaceFeedbackAlert
         type="success"
-        showIcon
-        message="Transformation complete"
+        title="Action completed"
         description="The backend created a processed version and finished profiling it. Redirecting to the processed version details page now."
       />
 

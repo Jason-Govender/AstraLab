@@ -1,63 +1,74 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import { buildWorkspaceSurfaceStyles } from "@/components/workspaceShell/workspaceSurfaceStyles";
 
-export const useStyles = createStyles(({ token, css }) => ({
-  card: css`
-    &.ant-card {
-      border-radius: 24px;
-      border-color: rgba(40, 58, 92, 0.18);
-      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
-    }
-  `,
+export const useStyles = createStyles((utils) => {
+  const { token, css } = utils;
+  const surfaces = buildWorkspaceSurfaceStyles(utils);
 
-  list: css`
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  `,
+  return {
+    card: surfaces.sectionCard,
 
-  item: css`
-    appearance: none;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-    padding: 16px;
-    border: 1px solid rgba(40, 58, 92, 0.16);
-    border-radius: 18px;
-    background: rgba(15, 23, 42, 0.03);
-    cursor: pointer;
-    text-align: left;
-    transition:
-      border-color 0.2s ease,
-      background 0.2s ease;
+    helperText: css`
+      margin: 0 0 4px !important;
+      color: ${token.colorTextSecondary} !important;
+    `,
 
-    &:hover {
-      border-color: ${token.colorPrimaryBorder};
-      background: rgba(15, 23, 42, 0.05);
-    }
-  `,
+    list: css`
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    `,
 
-  activeItem: css`
-    border-color: ${token.colorPrimary};
-    background: ${token.colorPrimaryBg};
-  `,
+    item: css`
+      appearance: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      padding: 16px;
+      border: 1px solid rgba(43, 62, 99, 0.9);
+      border-radius: 18px;
+      background: rgba(12, 20, 34, 0.84);
+      cursor: pointer;
+      text-align: left;
+      transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease;
 
-  itemHeader: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  `,
+      &:hover {
+        transform: translateY(-1px);
+        border-color: rgba(120, 152, 221, 0.7);
+        background: rgba(15, 25, 42, 0.92);
+      }
+    `,
 
-  preview: css`
-    margin-bottom: 0 !important;
-    color: ${token.colorTextSecondary};
-    white-space: pre-wrap;
-  `,
+    activeItem: css`
+      border-color: rgba(74, 120, 255, 0.92);
+      background:
+        radial-gradient(circle at top right, rgba(74, 120, 255, 0.14), transparent 35%),
+        rgba(14, 24, 41, 0.96);
+      box-shadow: inset 0 0 0 1px rgba(74, 120, 255, 0.28);
+    `,
 
-  metaText: css`
-    color: ${token.colorTextSecondary};
-  `,
-}));
+    itemHeader: css`
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    `,
+
+    preview: css`
+      margin-bottom: 0 !important;
+      color: ${token.colorTextSecondary};
+      line-height: 1.65;
+      white-space: pre-wrap;
+    `,
+
+    metaText: css`
+      color: ${token.colorTextSecondary};
+    `,
+  };
+});

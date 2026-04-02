@@ -11,6 +11,7 @@ import { Alert, Button, Card, Empty, Select, Typography } from "antd";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MlExperimentWorkspace } from "@/components/datasets/ml/mlExperimentWorkspace";
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import {
   DatasetCatalogProvider,
@@ -192,7 +193,7 @@ const MlWorkspacePageContent = () => {
       <div className={styles.contentStack}>
         <Card className={styles.selectionCard}>
           <div className={styles.selectionGrid}>
-            <div>
+            <div className={styles.selectorField}>
               <Text strong>Dataset</Text>
               <Select
                 allowClear
@@ -212,7 +213,7 @@ const MlWorkspacePageContent = () => {
               />
             </div>
 
-            <div>
+            <div className={styles.selectorField}>
               <Text strong>Version</Text>
               <Select
                 allowClear
@@ -282,7 +283,7 @@ const MlWorkspacePageContent = () => {
         ) : null}
 
         {datasetId && !currentDetails && !isDatasetDetailsError ? (
-          <Card loading className={styles.loadingCard} />
+          <WorkspaceLoadingCard className={styles.loadingCard} />
         ) : null}
 
         {datasetId && currentDetails && !hasVersions ? (

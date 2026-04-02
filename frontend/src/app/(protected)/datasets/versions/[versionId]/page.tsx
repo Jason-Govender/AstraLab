@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useState } from "react";
-import { Button, Card } from "antd";
+import { Button } from "antd";
 import { useParams, useRouter } from "next/navigation";
 import { DatasetOverviewCard } from "@/components/datasets/details/datasetOverviewCard";
 import { RawFileSummaryCard } from "@/components/datasets/details/rawFileSummaryCard";
@@ -11,6 +11,7 @@ import { DatasetProfileColumnsTable } from "@/components/datasets/shared/dataset
 import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetProfileSummaryCard";
 import { DatasetSchemaPreview } from "@/components/datasets/shared/datasetSchemaPreview";
 import { DatasetProducedByTransformationCard } from "@/components/datasets/transformations/datasetProducedByTransformationCard";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import { DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE } from "@/constants/datasets";
 import {
@@ -213,7 +214,7 @@ const ProcessedDatasetVersionContent = () => {
       ) : null}
 
       {!processedVersion && !isProcessedVersionError ? (
-        <Card loading className={styles.loadingCard} />
+        <WorkspaceLoadingCard className={styles.loadingCard} />
       ) : null}
 
       {processedVersion ? (
@@ -238,7 +239,7 @@ const ProcessedDatasetVersionContent = () => {
                 }
               />
             ) : (
-              <Card loading className={styles.loadingCard} />
+              <WorkspaceLoadingCard className={styles.loadingCard} />
             )}
 
             <DatasetProfileSummaryCard

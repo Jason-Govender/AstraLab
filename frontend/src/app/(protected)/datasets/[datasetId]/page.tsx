@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useEffectEvent, useState } from "react";
-import { Button, Card } from "antd";
+import { Button } from "antd";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetProfileSummaryCard";
 import { DatasetProfileColumnsTable } from "@/components/datasets/shared/datasetProfileColumnsTable";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import { DatasetOverviewCard } from "@/components/datasets/details/datasetOverviewCard";
 import { DatasetAutomaticInsightCard } from "@/components/datasets/details/datasetAutomaticInsightCard";
 import { DatasetVersionSelector } from "@/components/datasets/details/datasetVersionSelector";
@@ -18,6 +19,7 @@ import { DatasetTransformationHistoryCard } from "@/components/datasets/transfor
 import { MlWorkspaceLauncherCard } from "@/components/datasets/ml/mlWorkspaceLauncherCard";
 import { DatasetExplorationLauncherButton } from "@/components/datasets/exploration/datasetExplorationLauncherButton";
 import { DEFAULT_DATASET_PROFILE_COLUMNS_PAGE_SIZE } from "@/constants/datasets";
+import { buildReportsHref } from "@/utils/reports";
 import {
   DatasetAutoInsightProvider,
   useDatasetAutoInsightActions,
@@ -239,6 +241,14 @@ const DatasetDetailsContent = () => {
               versionId={effectiveSelectedVersionId}
               size="large"
             />
+            <Button
+              size="large"
+              onClick={() =>
+                router.push(buildReportsHref(datasetId, effectiveSelectedVersionId))
+              }
+            >
+              Open reports
+            </Button>
             <DatasetAiAssistantLauncherButton
               datasetId={datasetId}
               versionId={effectiveSelectedVersionId}
@@ -257,12 +267,6 @@ const DatasetDetailsContent = () => {
             >
               Transform version
             </Button>
-            <Button
-              size="large"
-              onClick={() => router.push("/datasets/upload")}
-            >
-              Upload dataset
-            </Button>
           </div>
         }
       />
@@ -279,7 +283,9 @@ const DatasetDetailsContent = () => {
         />
       ) : null}
 
-      {!details && !isError ? <Card loading className={styles.loadingCard} /> : null}
+      {!details && !isError ? (
+        <WorkspaceLoadingCard className={styles.loadingCard} />
+      ) : null}
 
       {details ? (
         <div className={styles.pageGrid}>

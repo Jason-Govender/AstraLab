@@ -7,6 +7,7 @@ export interface IMlExperimentsStateContext {
   isMutatingExperiment: boolean;
   isError: boolean;
   errorMessage?: string;
+  lastMutationMessage?: string;
   currentDatasetVersionId?: number;
   selectedExperimentId?: number;
   experiments: MlExperiment[];
@@ -23,6 +24,7 @@ export interface IMlExperimentsActionContext {
   cancelExperiment: (experimentId: number) => Promise<void>;
   retryExperiment: (experimentId: number) => Promise<void>;
   refreshExperiments: () => Promise<void>;
+  clearFeedback: () => void;
 }
 
 export const INITIAL_STATE: IMlExperimentsStateContext = {

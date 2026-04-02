@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   Descriptions,
-  Empty,
   Form,
   Input,
   InputNumber,
@@ -19,6 +18,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { DatasetAiAssistantLauncherButton } from "@/components/datasets/ai/datasetAiAssistantLauncherButton";
 import { DatasetAutomaticInsightCard } from "@/components/datasets/details/datasetAutomaticInsightCard";
+import { WorkspaceEmptyState } from "@/components/workspaceShell/WorkspaceEmptyState";
+import { WorkspaceFeedbackAlert } from "@/components/workspaceShell/WorkspaceFeedbackAlert";
 import {
   ML_ALGORITHM_OPTIONS,
   ML_EXPERIMENT_POLL_INTERVAL_MS,
@@ -185,6 +186,7 @@ export const MlExperimentWorkspace = ({
   const [form] = Form.useForm<MlExperimentFormValues>();
   const [formErrorMessage, setFormErrorMessage] = useState<string>();
   const {
+    clearFeedback,
     clearExperiments,
     cancelExperiment,
     createExperiment,
@@ -204,6 +206,7 @@ export const MlExperimentWorkspace = ({
     isLoadingExperiments,
     isMutatingExperiment,
     isSubmittingExperiment,
+    lastMutationMessage,
     selectedExperimentId,
   } = useMlExperimentsState();
   const {
@@ -324,6 +327,7 @@ export const MlExperimentWorkspace = ({
       };
 
       setFormErrorMessage(undefined);
+      clearFeedback();
       await createExperiment(request);
     } catch (error) {
       setFormErrorMessage(
@@ -353,9 +357,9 @@ export const MlExperimentWorkspace = ({
       </Paragraph>
 
       {!datasetVersionId ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        <WorkspaceEmptyState
           description="Select a dataset version to work with machine learning experiments."
+          isContained={false}
         />
       ) : null}
 
@@ -381,25 +385,52 @@ export const MlExperimentWorkspace = ({
         <div className={styles.workspaceGrid}>
           <div className={styles.panel}>
             <Card className={styles.sectionCard}>
-              <Title level={4}>Create Experiment</Title>
-              <Paragraph type="secondary">
-                Start with a baseline sklearn workflow, then refine the
-                configuration over retries.
-              </Paragraph>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <Title level={4} className={styles.sectionHeading}>
+                    Create experiment
+                  </Title>
+                  <Paragraph className={styles.sectionDescription}>
+                    Start with a baseline sklearn workflow, then refine the configuration over retries.
+                  </Paragraph>
+                </div>
+                {hasActiveMlExperiment ? <Tag color="processing">Active run</Tag> : null}
+              </div>
+
+              {hasActiveMlExperiment ? (
+                <WorkspaceFeedbackAlert
+                  type="info"
+                  title="Currently running"
+                  description="AstraLab is polling the active ML run automatically. Metrics, status, and AI interpretation will refresh as soon as the run progresses."
+                />
+              ) : null}
+
+              {lastMutationMessage ? (
+                <WorkspaceFeedbackAlert
+                  type="success"
+                  title="Action completed"
+                  description={lastMutationMessage}
+                  closable
+                  onClose={clearFeedback}
+                />
+              ) : null}
 
               {formErrorMessage ? (
-                <Alert
+                <WorkspaceFeedbackAlert
                   type="error"
-                  showIcon
-                  message="Invalid ML configuration"
+                  title="Action failed"
                   description={formErrorMessage}
-                  style={{ marginBottom: 16 }}
+                  className={styles.feedbackAlert}
                 />
               ) : null}
 
               <Form<MlExperimentFormValues>
                 form={form}
                 layout="vertical"
+                onValuesChange={() => {
+                  setFormErrorMessage(undefined);
+                  clearFeedback();
+                }}
                 initialValues={{
                   taskType: MlTaskType.Classification,
                   randomState: 42,
@@ -567,25 +598,35 @@ export const MlExperimentWorkspace = ({
 
           <div className={styles.panel}>
             <Card className={styles.sectionCard}>
-              <Title level={4}>Experiment History</Title>
-              <Paragraph type="secondary">
-                Select an experiment to inspect its metrics, failures, and artifact metadata.
-              </Paragraph>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <Title level={4} className={styles.sectionHeading}>
+                    Experiment history
+                  </Title>
+                  <Paragraph className={styles.sectionDescription}>
+                    Select an experiment to inspect its metrics, failures, artifact metadata, and AI interpretation.
+                  </Paragraph>
+                </div>
+                {experiments.length > 0 ? (
+                  <Tag color="blue">{`${experiments.length} stored`}</Tag>
+                ) : null}
+              </div>
 
               {isError && errorMessage ? (
-                <Alert
+                <WorkspaceFeedbackAlert
                   type="error"
-                  showIcon
-                  message="Unable to refresh ML experiments"
+                  title="Unable to load"
                   description={errorMessage}
-                  style={{ marginBottom: 16 }}
+                  className={styles.feedbackAlert}
+                  actionLabel="Retry"
+                  onAction={() => void refreshExperiments()}
                 />
               ) : null}
 
               {experiments.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                <WorkspaceEmptyState
                   description="No ML experiments have been created for this version yet."
+                  isContained={false}
                 />
               ) : (
                 <div className={styles.experimentList}>
@@ -597,7 +638,10 @@ export const MlExperimentWorkspace = ({
                         experiment.id === selectedExperimentId &&
                           styles.experimentItemSelected,
                       )}
-                      onClick={() => selectExperiment(experiment.id)}
+                      onClick={() => {
+                        clearFeedback();
+                        selectExperiment(experiment.id);
+                      }}
                     >
                       <Space wrap>
                         <Tag color="geekblue">
@@ -621,15 +665,33 @@ export const MlExperimentWorkspace = ({
             </Card>
 
             <Card className={styles.sectionCard}>
-              <Title level={4}>Experiment Details</Title>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <Title level={4} className={styles.sectionHeading}>
+                    Experiment details
+                  </Title>
+                  <Paragraph className={styles.sectionDescription}>
+                    Review execution context first, then scan warnings, AI interpretation, metrics, and artifacts.
+                  </Paragraph>
+                </div>
+              </div>
 
               {!selectedExperiment ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                <WorkspaceEmptyState
                   description="Choose an experiment from the history list to inspect it."
+                  isContained={false}
                 />
               ) : (
                 <Space direction="vertical" size="large" style={{ width: "100%" }}>
+                  {selectedExperiment.status === MlExperimentStatus.Pending ||
+                  selectedExperiment.status === MlExperimentStatus.Running ? (
+                    <WorkspaceFeedbackAlert
+                      type="info"
+                      title="Currently running"
+                      description="This experiment is still executing. AstraLab will keep refreshing the experiment history automatically until the run finishes."
+                    />
+                  ) : null}
+
                   <Descriptions
                     size="small"
                     column={1}
@@ -687,7 +749,10 @@ export const MlExperimentWorkspace = ({
                     {selectedExperiment.status === MlExperimentStatus.Pending ? (
                       <Button
                         danger
-                        onClick={() => void cancelExperiment(selectedExperiment.id)}
+                        onClick={() => {
+                          clearFeedback();
+                          void cancelExperiment(selectedExperiment.id);
+                        }}
                         loading={isMutatingExperiment}
                       >
                         Cancel experiment
@@ -699,7 +764,10 @@ export const MlExperimentWorkspace = ({
                     (selectedExperiment.status === MlExperimentStatus.Pending &&
                       !selectedExperiment.startedAtUtc) ? (
                       <Button
-                        onClick={() => void retryExperiment(selectedExperiment.id)}
+                        onClick={() => {
+                          clearFeedback();
+                          void retryExperiment(selectedExperiment.id);
+                        }}
                         loading={isMutatingExperiment}
                       >
                         Retry experiment
@@ -756,58 +824,84 @@ export const MlExperimentWorkspace = ({
                   {selectedExperiment.model ? (
                     <>
                       {performanceSummary ? (
+                        <div className={styles.detailSection}>
+                          <Text strong className={styles.detailSectionTitle}>
+                            Performance summary
+                          </Text>
+                          <Descriptions
+                            size="small"
+                            column={1}
+                            items={Object.entries(performanceSummary).map(
+                              ([key, value]) => ({
+                                key,
+                                label: formatMlMetricLabel(key),
+                                children:
+                                  typeof value === "number"
+                                    ? formatNumber(value, 4)
+                                    : String(value),
+                              }),
+                            )}
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className={styles.detailSection}>
+                        <Text strong className={styles.detailSectionTitle}>
+                          Artifact metadata
+                        </Text>
                         <Descriptions
                           size="small"
                           column={1}
-                          items={Object.entries(performanceSummary).map(
-                            ([key, value]) => ({
-                              key,
-                              label: formatMlMetricLabel(key),
+                          items={[
+                            {
+                              key: "artifact-provider",
+                              label: "Artifact Provider",
                               children:
-                                typeof value === "number"
-                                  ? formatNumber(value, 4)
-                                  : String(value),
-                            }),
-                          )}
+                                selectedExperiment.model.artifactStorageProvider ||
+                                "Unavailable",
+                            },
+                            {
+                              key: "artifact-key",
+                              label: "Artifact Key",
+                              children:
+                                selectedExperiment.model.artifactStorageKey ||
+                                "Unavailable",
+                            },
+                          ]}
                         />
+                      </div>
+
+                      {selectedExperiment.model.metrics.length > 0 ? (
+                        <div className={styles.detailSection}>
+                          <Text strong className={styles.detailSectionTitle}>
+                            Model metrics
+                          </Text>
+                          <Table
+                            rowKey="metricName"
+                            size="small"
+                            pagination={false}
+                            columns={metricColumns}
+                            dataSource={selectedExperiment.model.metrics}
+                            className={styles.table}
+                          />
+                        </div>
                       ) : null}
 
-                      <Descriptions
-                        size="small"
-                        column={1}
-                        items={[
-                          {
-                            key: "artifact-provider",
-                            label: "Artifact Provider",
-                            children:
-                              selectedExperiment.model.artifactStorageProvider ||
-                              "Unavailable",
-                          },
-                          {
-                            key: "artifact-key",
-                            label: "Artifact Key",
-                            children:
-                              selectedExperiment.model.artifactStorageKey ||
-                              "Unavailable",
-                          },
-                        ]}
-                      />
-
-                      <Table
-                        rowKey="metricName"
-                        size="small"
-                        pagination={false}
-                        columns={metricColumns}
-                        dataSource={selectedExperiment.model.metrics}
-                      />
-
-                      <Table
-                        rowKey={(record) => `${record.datasetColumnId}-${record.rank}`}
-                        size="small"
-                        pagination={false}
-                        columns={featureImportanceColumns}
-                        dataSource={selectedExperiment.model.featureImportances}
-                      />
+                      {selectedExperiment.model.featureImportances.length > 0 ? (
+                        <div className={styles.detailSection}>
+                          <Text strong className={styles.detailSectionTitle}>
+                            Feature importance
+                          </Text>
+                          <Table
+                            rowKey={(record) => `${record.datasetColumnId}-${record.rank}`}
+                            size="small"
+                            pagination={false}
+                            columns={featureImportanceColumns}
+                            dataSource={selectedExperiment.model.featureImportances}
+                            className={styles.table}
+                          />
+                        </div>
+                      ) : null}
                     </>
                   ) : (
                     <Paragraph type="secondary">
@@ -815,8 +909,10 @@ export const MlExperimentWorkspace = ({
                     </Paragraph>
                   )}
 
-                  <div>
-                    <Text strong>Training Configuration</Text>
+                  <div className={styles.detailSection}>
+                    <Text strong className={styles.detailSectionTitle}>
+                      Training configuration
+                    </Text>
                     <pre className={styles.codeBlock}>
                       {selectedExperiment.trainingConfigurationJson}
                     </pre>

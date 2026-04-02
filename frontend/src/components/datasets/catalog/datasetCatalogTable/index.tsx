@@ -130,6 +130,9 @@ export const DatasetCatalogTable = ({
           showSizeChanger: true,
         }}
         onChange={handlePaginationChange}
+        onRow={(record) => ({
+          onClick: () => onOpenDataset(record.id, record.currentVersionId),
+        })}
         scroll={{ x: 960 }}
       />
     </Card>

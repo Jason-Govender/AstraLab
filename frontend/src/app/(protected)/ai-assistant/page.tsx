@@ -8,6 +8,7 @@ import { DatasetOverviewCard } from "@/components/datasets/details/datasetOvervi
 import { DatasetVersionSelector } from "@/components/datasets/details/datasetVersionSelector";
 import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetProfileSummaryCard";
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import {
   DatasetAiAssistantProvider,
@@ -87,6 +88,7 @@ const AiAssistantPageContent = () => {
   } = useMlExperimentsState();
   const {
     askQuestion,
+    clearFeedback,
     clearConversationState,
     generateCleaningRecommendations,
     generateInsights,
@@ -105,6 +107,7 @@ const AiAssistantPageContent = () => {
     conversations,
     experimentContextErrorMessage,
     generationErrorMessage,
+    lastGeneratedResponse,
     isGenerating,
     isLoadingConversations,
     isLoadingExperimentContext,
@@ -369,9 +372,9 @@ const AiAssistantPageContent = () => {
       />
 
       <div className={styles.contentStack}>
-        <Card className={styles.selectionCard}>
-          <div className={styles.selectionGrid}>
-            <div>
+          <Card className={styles.selectionCard}>
+            <div className={styles.selectionGrid}>
+            <div className={styles.selectorField}>
               <Text strong>Dataset</Text>
               <Select
                 allowClear
@@ -391,7 +394,7 @@ const AiAssistantPageContent = () => {
               />
             </div>
 
-            <div>
+            <div className={styles.selectorField}>
               <Text strong>Version</Text>
               <Select
                 allowClear
@@ -407,7 +410,7 @@ const AiAssistantPageContent = () => {
               />
             </div>
 
-            <div>
+            <div className={styles.selectorField}>
               <Text strong>Experiment Context</Text>
               <Select
                 allowClear
@@ -478,7 +481,7 @@ const AiAssistantPageContent = () => {
         ) : null}
 
         {datasetId && !currentDetails && !isDatasetDetailsError ? (
-          <Card loading className={styles.loadingCard} />
+          <WorkspaceLoadingCard className={styles.loadingCard} />
         ) : null}
 
         {datasetId && currentDetails && !hasVersions ? (
@@ -507,6 +510,7 @@ const AiAssistantPageContent = () => {
                 conversationErrorMessage={conversationErrorMessage}
                 responseErrorMessage={responseErrorMessage}
                 generationErrorMessage={generationErrorMessage}
+                lastGeneratedResponse={lastGeneratedResponse}
                 onSelectConversation={setActiveConversation}
                 onGenerateSummary={generateSummary}
                 onGenerateInsights={(datasetVersionId) => {
@@ -528,7 +532,7 @@ const AiAssistantPageContent = () => {
                     activeDatasetVersionId ?? effectiveSelectedVersionId;
 
                   if (!datasetVersionId) {
-                    return Promise.resolve();
+                    return Promise.resolve(false);
                   }
 
                   return askQuestion({
@@ -538,6 +542,7 @@ const AiAssistantPageContent = () => {
                     mlExperimentId: activeMlExperimentId,
                   });
                 }}
+                onClearFeedback={clearFeedback}
               />
             </div>
 

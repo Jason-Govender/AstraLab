@@ -10,6 +10,7 @@ import {
 } from "@/utils/datasetTransformations";
 import {
   addStep as addStepAction,
+  clearFeedback as clearFeedbackAction,
   moveStep as moveStepAction,
   resetTransformation as resetTransformationAction,
   setSourceVersionId as setSourceVersionIdAction,
@@ -56,6 +57,10 @@ export const DatasetTransformationBuilderProvider = ({
 
   const moveStep = (stepId: string, direction: "up" | "down") => {
     dispatch(moveStepAction(stepId, direction));
+  };
+
+  const clearFeedback = () => {
+    dispatch(clearFeedbackAction());
   };
 
   const transformDatasetVersion = async () => {
@@ -107,6 +112,7 @@ export const DatasetTransformationBuilderProvider = ({
           removeStep,
           moveStep,
           transformDatasetVersion,
+          clearFeedback,
           resetTransformation,
         }}
       >

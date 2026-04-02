@@ -31,6 +31,9 @@ export const DatasetAiConversationListCard = ({
   return (
     <Card loading={isLoading} className={styles.card}>
       <Title level={4}>Stored conversations</Title>
+      <Paragraph className={styles.helperText}>
+        Reopen the most relevant thread for this context and keep the assistant grounded in prior turns instead of starting from scratch.
+      </Paragraph>
 
       {isError ? (
         <Alert

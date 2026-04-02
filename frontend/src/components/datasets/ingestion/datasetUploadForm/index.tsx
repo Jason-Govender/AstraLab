@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Card, Form, Input, Typography, Upload } from "antd";
+import { Button, Card, Form, Input, Tag, Typography, Upload } from "antd";
+import { FileTextOutlined } from "@ant-design/icons";
 import type { UploadFile } from "antd";
 import type { UploadProps } from "antd";
+import { WorkspaceFeedbackAlert } from "@/components/workspaceShell/WorkspaceFeedbackAlert";
 import type { UploadRawDatasetFormValues } from "@/types/datasets";
+import { formatBytes } from "@/utils/datasets";
 import { useStyles } from "./style";
 
 const { Dragger } = Upload;
-const { Paragraph } = Typography;
+const { Paragraph, Title } = Typography;
 const { TextArea } = Input;
 
 interface DatasetUploadFormProps {
   isSubmitting?: boolean;
   errorMessage?: string;
+  onInteraction?: () => void;
   onSubmit: (values: UploadRawDatasetFormValues) => Promise<void>;
 }
 
@@ -25,21 +29,35 @@ interface DatasetUploadFields {
 export const DatasetUploadForm = ({
   isSubmitting = false,
   errorMessage,
+  onInteraction,
   onSubmit,
 }: DatasetUploadFormProps) => {
   const { styles } = useStyles();
   const [form] = Form.useForm<DatasetUploadFields>();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [fileError, setFileError] = useState<string>();
+  const datasetName = Form.useWatch("name", form);
+  const selectedFile = fileList[0];
+  const currentFile = selectedFile?.originFileObj;
+  const canSubmit = Boolean(datasetName?.trim()) && Boolean(currentFile) && !isSubmitting;
+
+  const clearFormFeedback = () => {
+    onInteraction?.();
+  };
 
   const handleUploadChange: UploadProps["onChange"] = ({ fileList: nextFileList }) => {
+    clearFormFeedback();
     setFileError(undefined);
     setFileList(nextFileList.slice(-1));
   };
 
-  const handleSubmit = async (values: DatasetUploadFields) => {
-    const currentFile = fileList[0]?.originFileObj;
+  const handleRemoveFile = () => {
+    clearFormFeedback();
+    setFileError(undefined);
+    setFileList([]);
+  };
 
+  const handleSubmit = async (values: DatasetUploadFields) => {
     if (!currentFile) {
       setFileError("A dataset file is required.");
       return;
@@ -54,17 +72,34 @@ export const DatasetUploadForm = ({
 
   return (
     <Card className={styles.card}>
+      <div className={styles.introBlock}>
+        <Title level={4} className={styles.introTitle}>
+          Start a new dataset intake
+        </Title>
+        <Paragraph className={styles.helperText}>
+          Upload one raw CSV or JSON file, confirm the dataset metadata, and let AstraLab create the first profiled version automatically.
+        </Paragraph>
+      </div>
+
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
+        onValuesChange={clearFormFeedback}
         className={styles.form}
       >
+        {isSubmitting ? (
+          <WorkspaceFeedbackAlert
+            type="info"
+            title="Currently running"
+            description="AstraLab is uploading the file, creating the first dataset version, and profiling it in the background."
+          />
+        ) : null}
+
         {errorMessage ? (
-          <Alert
+          <WorkspaceFeedbackAlert
             type="error"
-            showIcon
-            message="Upload failed"
+            title="Action failed"
             description={errorMessage}
           />
         ) : null}
@@ -92,24 +127,44 @@ export const DatasetUploadForm = ({
         <Form.Item
           label="Raw dataset file"
           required
-          extra="Upload a CSV or JSON file. The backend validates and extracts schema metadata."
+          extra="Select a CSV or JSON file. The actual upload happens only when you press Upload dataset."
         >
           <Dragger
+            className={styles.dragger}
             accept=".csv,.json"
             fileList={fileList}
             maxCount={1}
+            showUploadList={false}
             beforeUpload={() => false}
             onChange={handleUploadChange}
-            onRemove={() => {
-              setFileError(undefined);
-              setFileList([]);
-            }}
           >
             <Paragraph>Click or drag a dataset file to this area to upload</Paragraph>
             <Paragraph className={styles.helperText}>
-              Supported formats: CSV and JSON
+              Supported formats: CSV and JSON. Files stay local until you submit this form.
             </Paragraph>
           </Dragger>
+
+          {selectedFile ? (
+            <div className={styles.selectedFileCard}>
+              <div className={styles.selectedFileBody}>
+                <div className={styles.selectedFileName}>
+                  <FileTextOutlined /> {selectedFile.name}
+                </div>
+                <div className={styles.selectedFileMeta}>
+                  <Tag color="blue">
+                    {(selectedFile.name.split(".").pop() || "file").toUpperCase()}
+                  </Tag>
+                  {typeof selectedFile.size === "number" ? (
+                    <Tag color="default">{formatBytes(selectedFile.size)}</Tag>
+                  ) : null}
+                  <Tag color="cyan">Ready to upload</Tag>
+                </div>
+              </div>
+
+              <Button onClick={handleRemoveFile}>Remove file</Button>
+            </div>
+          ) : null}
+
           {fileError ? (
             <Paragraph className={styles.fileError}>{fileError}</Paragraph>
           ) : null}
@@ -121,11 +176,12 @@ export const DatasetUploadForm = ({
             htmlType="submit"
             size="large"
             loading={isSubmitting}
+            disabled={!canSubmit}
           >
             Upload dataset
           </Button>
-          <Paragraph className={styles.helperText}>
-            You’ll be redirected to the dataset details page after a successful upload.
+          <Paragraph className={styles.submitHint}>
+            After a successful upload, AstraLab will show the immediate profiling snapshot here and then redirect you to dataset details automatically.
           </Paragraph>
         </div>
       </Form>

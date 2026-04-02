@@ -183,7 +183,10 @@ const ReportsPageContent = () => {
         onSelectDataset={handleDatasetChange}
         onSelectVersion={handleVersionChange}
         onSelectReport={selectReport}
-        onRefresh={() => void refreshReportsWorkspace()}
+        onRefresh={() => {
+          void getRecentDatasets();
+          void refreshReportsWorkspace();
+        }}
         onGenerateReport={() => void generateReport()}
         onExportPdf={(reportRecordId) => void exportReportPdf(reportRecordId)}
         onExportCsv={(reportRecordId) => void exportInsightsCsv(reportRecordId)}

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useEffectEvent } from "react";
-import { Button, Card, Space } from "antd";
+import { Button, Space } from "antd";
 import {
   useRouter,
   useSearchParams,
   type ReadonlyURLSearchParams,
 } from "next/navigation";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import { DatasetCatalogFilters } from "@/components/datasets/catalog/datasetCatalogFilters";
 import { DatasetCatalogTable } from "@/components/datasets/catalog/datasetCatalogTable";
 import { DatasetEmptyState } from "@/components/datasets/shared/datasetEmptyState";
@@ -188,7 +189,7 @@ const DatasetCatalogContent = () => {
         ) : null}
 
         {isLoadingCatalog && datasets.length === 0 ? (
-          <Card loading className={styles.loadingCard} />
+          <WorkspaceLoadingCard className={styles.loadingCard} />
         ) : null}
       </div>
     </>

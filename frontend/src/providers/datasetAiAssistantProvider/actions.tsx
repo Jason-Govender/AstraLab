@@ -18,6 +18,7 @@ export enum DatasetAiAssistantActionEnums {
   generateSuccess = "DATASET_AI_ASSISTANT_GENERATE_SUCCESS",
   generateError = "DATASET_AI_ASSISTANT_GENERATE_ERROR",
   setActiveConversation = "DATASET_AI_ASSISTANT_SET_ACTIVE_CONVERSATION",
+  clearFeedback = "DATASET_AI_ASSISTANT_CLEAR_FEEDBACK",
   clearConversationState = "DATASET_AI_ASSISTANT_CLEAR",
 }
 
@@ -86,6 +87,11 @@ interface SetActiveConversationAction {
   payload: DatasetAiAssistantStatePatch;
 }
 
+interface ClearFeedbackAction {
+  type: DatasetAiAssistantActionEnums.clearFeedback;
+  payload: DatasetAiAssistantStatePatch;
+}
+
 interface ClearConversationStateAction {
   type: DatasetAiAssistantActionEnums.clearConversationState;
   payload: DatasetAiAssistantStatePatch;
@@ -105,6 +111,7 @@ export type DatasetAiAssistantAction =
   | GenerateSuccessAction
   | GenerateErrorAction
   | SetActiveConversationAction
+  | ClearFeedbackAction
   | ClearConversationStateAction;
 
 export const loadExperimentContextPending = ({
@@ -290,6 +297,7 @@ export const generatePending = ({
     isGenerating: true,
     isPending: true,
     isError: false,
+    lastGeneratedResponse: undefined,
     generationErrorMessage: undefined,
   },
 });
@@ -344,7 +352,17 @@ export const setActiveConversation = (
     activeConversationId: conversationId,
     responses: [],
     responseTotalCount: 0,
+    lastGeneratedResponse: undefined,
+    generationErrorMessage: undefined,
     responseErrorMessage: undefined,
+  },
+});
+
+export const clearFeedback = (): ClearFeedbackAction => ({
+  type: DatasetAiAssistantActionEnums.clearFeedback,
+  payload: {
+    lastGeneratedResponse: undefined,
+    generationErrorMessage: undefined,
   },
 });
 
