@@ -1,9 +1,13 @@
 import type { AIConversation, AIResponse } from "@/types/datasets";
+import type { MlExperiment } from "@/types/ml";
 import type { IDatasetAiAssistantStateContext } from "./context";
 
 type DatasetAiAssistantStatePatch = Partial<IDatasetAiAssistantStateContext>;
 
 export enum DatasetAiAssistantActionEnums {
+  loadExperimentContextPending = "DATASET_AI_ASSISTANT_LOAD_EXPERIMENT_CONTEXT_PENDING",
+  loadExperimentContextSuccess = "DATASET_AI_ASSISTANT_LOAD_EXPERIMENT_CONTEXT_SUCCESS",
+  loadExperimentContextError = "DATASET_AI_ASSISTANT_LOAD_EXPERIMENT_CONTEXT_ERROR",
   getConversationsPending = "DATASET_AI_ASSISTANT_GET_CONVERSATIONS_PENDING",
   getConversationsSuccess = "DATASET_AI_ASSISTANT_GET_CONVERSATIONS_SUCCESS",
   getConversationsError = "DATASET_AI_ASSISTANT_GET_CONVERSATIONS_ERROR",
@@ -19,6 +23,21 @@ export enum DatasetAiAssistantActionEnums {
 
 interface GetConversationsPendingAction {
   type: DatasetAiAssistantActionEnums.getConversationsPending;
+  payload: DatasetAiAssistantStatePatch;
+}
+
+interface LoadExperimentContextPendingAction {
+  type: DatasetAiAssistantActionEnums.loadExperimentContextPending;
+  payload: DatasetAiAssistantStatePatch;
+}
+
+interface LoadExperimentContextSuccessAction {
+  type: DatasetAiAssistantActionEnums.loadExperimentContextSuccess;
+  payload: DatasetAiAssistantStatePatch;
+}
+
+interface LoadExperimentContextErrorAction {
+  type: DatasetAiAssistantActionEnums.loadExperimentContextError;
   payload: DatasetAiAssistantStatePatch;
 }
 
@@ -73,6 +92,9 @@ interface ClearConversationStateAction {
 }
 
 export type DatasetAiAssistantAction =
+  | LoadExperimentContextPendingAction
+  | LoadExperimentContextSuccessAction
+  | LoadExperimentContextErrorAction
   | GetConversationsPendingAction
   | GetConversationsSuccessAction
   | GetConversationsErrorAction
@@ -84,6 +106,56 @@ export type DatasetAiAssistantAction =
   | GenerateErrorAction
   | SetActiveConversationAction
   | ClearConversationStateAction;
+
+export const loadExperimentContextPending = ({
+  experimentId,
+}: {
+  experimentId?: number;
+}): LoadExperimentContextPendingAction => ({
+  type: DatasetAiAssistantActionEnums.loadExperimentContextPending,
+  payload: {
+    activeMlExperimentId: experimentId,
+    activeExperiment: undefined,
+    isLoadingExperimentContext: Boolean(experimentId),
+    isPending: Boolean(experimentId),
+    isError: false,
+    experimentContextErrorMessage: undefined,
+  },
+});
+
+export const loadExperimentContextSuccess = ({
+  experiment,
+}: {
+  experiment?: MlExperiment;
+}): LoadExperimentContextSuccessAction => ({
+  type: DatasetAiAssistantActionEnums.loadExperimentContextSuccess,
+  payload: {
+    activeMlExperimentId: experiment?.id,
+    activeExperiment: experiment,
+    isLoadingExperimentContext: false,
+    isPending: false,
+    isError: false,
+    experimentContextErrorMessage: undefined,
+  },
+});
+
+export const loadExperimentContextError = ({
+  experimentId,
+  errorMessage,
+}: {
+  experimentId?: number;
+  errorMessage: string;
+}): LoadExperimentContextErrorAction => ({
+  type: DatasetAiAssistantActionEnums.loadExperimentContextError,
+  payload: {
+    activeMlExperimentId: experimentId,
+    activeExperiment: undefined,
+    isLoadingExperimentContext: false,
+    isPending: false,
+    isError: true,
+    experimentContextErrorMessage: errorMessage,
+  },
+});
 
 export const getConversationsPending = ({
   datasetId,
@@ -206,12 +278,15 @@ export const getResponsesError = ({
 
 export const generatePending = ({
   datasetVersionId,
+  mlExperimentId,
 }: {
   datasetVersionId: number;
+  mlExperimentId?: number;
 }): GeneratePendingAction => ({
   type: DatasetAiAssistantActionEnums.generatePending,
   payload: {
     activeDatasetVersionId: datasetVersionId,
+    activeMlExperimentId: mlExperimentId,
     isGenerating: true,
     isPending: true,
     isError: false,
@@ -232,6 +307,7 @@ export const generateSuccess = ({
   payload: {
     activeDatasetVersionId: datasetVersionId,
     activeConversationId: conversationId,
+    activeMlExperimentId: response.mlExperimentId ?? undefined,
     lastGeneratedResponse: response,
     isGenerating: false,
     isPending: false,
@@ -242,14 +318,17 @@ export const generateSuccess = ({
 
 export const generateError = ({
   datasetVersionId,
+  mlExperimentId,
   errorMessage,
 }: {
   datasetVersionId: number;
+  mlExperimentId?: number;
   errorMessage: string;
 }): GenerateErrorAction => ({
   type: DatasetAiAssistantActionEnums.generateError,
   payload: {
     activeDatasetVersionId: datasetVersionId,
+    activeMlExperimentId: mlExperimentId,
     isGenerating: false,
     isPending: false,
     isError: true,
@@ -275,16 +354,20 @@ export const clearConversationState = (): ClearConversationStateAction => ({
     activeDatasetId: undefined,
     activeDatasetVersionId: undefined,
     activeConversationId: undefined,
+    activeMlExperimentId: undefined,
+    activeExperiment: undefined,
     conversations: [],
     responses: [],
     conversationTotalCount: 0,
     responseTotalCount: 0,
     lastGeneratedResponse: undefined,
+    isLoadingExperimentContext: false,
     isLoadingConversations: false,
     isLoadingResponses: false,
     isGenerating: false,
     isPending: false,
     isError: false,
+    experimentContextErrorMessage: undefined,
     conversationErrorMessage: undefined,
     responseErrorMessage: undefined,
     generationErrorMessage: undefined,

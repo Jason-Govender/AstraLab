@@ -89,6 +89,38 @@ namespace AstraLab.Tests.Services.AI
             result.UserMessage.ShouldContain("Use exactly these headings in order: Summary, Key data quality issues, Notable patterns or anomalies, Suggested next steps.");
         }
 
+        [Fact]
+        public void Build_Should_Inject_Ml_Experiment_Context_And_Use_Experiment_Specific_Rules()
+        {
+            var result = _aiPromptBuilder.Build(new AiPromptBuildRequest
+            {
+                ResponseType = AIResponseType.Summary,
+                DatasetContext = BuildDatasetContext(),
+                MlExperimentContext = new AiMlExperimentContext
+                {
+                    MLExperimentId = 55,
+                    DatasetVersionId = 100,
+                    AlgorithmKey = "random_forest_classifier",
+                    ModelType = "random_forest_classifier",
+                    HasModelOutput = true,
+                    FeatureNames = new[] { "amount", "region" },
+                    Metrics = new[]
+                    {
+                        new AiMlMetricContext
+                        {
+                            MetricName = "accuracy",
+                            MetricValue = 0.91m
+                        }
+                    }
+                }
+            });
+
+            result.SystemInstructions.ShouldContain("machine learning experiment context");
+            result.UserMessage.ShouldContain("Machine learning experiment context JSON:");
+            result.UserMessage.ShouldContain("random_forest_classifier");
+            result.UserMessage.ShouldContain("Generate a machine learning experiment summary.");
+        }
+
         private static AiDatasetContext BuildDatasetContext()
         {
             return new AiDatasetContext

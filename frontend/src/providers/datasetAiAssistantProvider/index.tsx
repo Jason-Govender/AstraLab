@@ -3,15 +3,18 @@
 import { useContext, useReducer } from "react";
 import type { PropsWithChildren } from "react";
 import {
+  askExperimentQuestion as askExperimentQuestionRequest,
   askDatasetQuestion as askDatasetQuestionRequest,
+  generateExperimentRecommendations as generateExperimentRecommendationsRequest,
+  generateExperimentSummary as generateExperimentSummaryRequest,
   generateDatasetCleaningRecommendations as generateDatasetCleaningRecommendationsRequest,
   generateDatasetInsights as generateDatasetInsightsRequest,
   generateDatasetSummary as generateDatasetSummaryRequest,
   getDatasetAiConversations as getDatasetAiConversationsRequest,
   getDatasetAiResponses as getDatasetAiResponsesRequest,
 } from "@/services/datasetService";
+import { getMlExperiment } from "@/services/mlExperimentService";
 import type {
-  AskDatasetAiQuestionRequest,
   GenerateDatasetAiResponseResult,
   GetDatasetAiConversationsRequest,
   GetDatasetAiResponsesRequest,
@@ -28,11 +31,15 @@ import {
   getResponsesError,
   getResponsesPending,
   getResponsesSuccess,
+  loadExperimentContextError,
+  loadExperimentContextPending,
+  loadExperimentContextSuccess,
   setActiveConversation as setActiveConversationAction,
 } from "./actions";
 import {
   DatasetAiAssistantActionContext,
   DatasetAiAssistantStateContext,
+  type IDatasetAiAssistantAskRequest,
   INITIAL_STATE,
 } from "./context";
 import { DatasetAiAssistantReducer } from "./reducer";
@@ -44,6 +51,30 @@ const DEFAULT_RESPONSE_PAGE_SIZE = 100;
 
 export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
   const [state, dispatch] = useReducer(DatasetAiAssistantReducer, INITIAL_STATE);
+
+  const loadExperimentContext = async (experimentId?: number) => {
+    dispatch(loadExperimentContextPending({ experimentId }));
+
+    if (!experimentId) {
+      dispatch(loadExperimentContextSuccess({ experiment: undefined }));
+      return;
+    }
+
+    try {
+      const experiment = await getMlExperiment(experimentId);
+      dispatch(loadExperimentContextSuccess({ experiment }));
+    } catch (error) {
+      dispatch(
+        loadExperimentContextError({
+          experimentId,
+          errorMessage: getApiErrorMessage(
+            error,
+            "Unable to load the selected ML experiment context right now.",
+          ),
+        }),
+      );
+    }
+  };
 
   const getConversations = async (request: GetDatasetAiConversationsRequest) => {
     dispatch(
@@ -110,6 +141,7 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
       await getConversations({
         datasetId: state.activeDatasetId,
         datasetVersionId,
+        mlExperimentId: state.activeMlExperimentId,
         page: DEFAULT_CONVERSATION_PAGE,
         pageSize: DEFAULT_CONVERSATION_PAGE_SIZE,
       });
@@ -125,9 +157,10 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
 
   const runGeneration = async (
     datasetVersionId: number,
+    mlExperimentId: number | undefined,
     request: () => Promise<GenerateDatasetAiResponseResult>,
   ) => {
-    dispatch(generatePending({ datasetVersionId }));
+    dispatch(generatePending({ datasetVersionId, mlExperimentId }));
 
     try {
       const result = await request();
@@ -143,6 +176,7 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
       dispatch(
         generateError({
           datasetVersionId,
+          mlExperimentId,
           errorMessage: getApiErrorMessage(
             error,
             "Unable to generate the dataset AI response right now.",
@@ -153,30 +187,47 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
   };
 
   const generateSummary = async (datasetVersionId: number) => {
-    await runGeneration(datasetVersionId, () =>
-      generateDatasetSummaryRequest(datasetVersionId),
+    await runGeneration(datasetVersionId, state.activeMlExperimentId, () =>
+      state.activeMlExperimentId
+        ? generateExperimentSummaryRequest(state.activeMlExperimentId)
+        : generateDatasetSummaryRequest(datasetVersionId),
     );
   };
 
   const generateInsights = async (datasetVersionId: number) => {
-    await runGeneration(datasetVersionId, () =>
+    await runGeneration(datasetVersionId, undefined, () =>
       generateDatasetInsightsRequest(datasetVersionId),
     );
   };
 
   const generateCleaningRecommendations = async (datasetVersionId: number) => {
-    await runGeneration(datasetVersionId, () =>
-      generateDatasetCleaningRecommendationsRequest(datasetVersionId),
+    await runGeneration(datasetVersionId, state.activeMlExperimentId, () =>
+      state.activeMlExperimentId
+        ? generateExperimentRecommendationsRequest(state.activeMlExperimentId)
+        : generateDatasetCleaningRecommendationsRequest(datasetVersionId),
     );
   };
 
-  const askQuestion = async (request: AskDatasetAiQuestionRequest) => {
-    await runGeneration(request.datasetVersionId, () =>
-      askDatasetQuestionRequest({
-        datasetVersionId: request.datasetVersionId,
-        question: request.question,
-        conversationId: request.conversationId ?? state.activeConversationId,
-      }),
+  const askQuestion = async ({
+    datasetVersionId,
+    question,
+    conversationId,
+    mlExperimentId,
+  }: IDatasetAiAssistantAskRequest) => {
+    const effectiveExperimentId = mlExperimentId ?? state.activeMlExperimentId;
+
+    await runGeneration(datasetVersionId, effectiveExperimentId, () =>
+      effectiveExperimentId
+        ? askExperimentQuestionRequest({
+            mlExperimentId: effectiveExperimentId,
+            question,
+            conversationId: conversationId ?? state.activeConversationId,
+          })
+        : askDatasetQuestionRequest({
+            datasetVersionId,
+            question,
+            conversationId: conversationId ?? state.activeConversationId,
+          }),
     );
   };
 
@@ -192,6 +243,7 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
     <DatasetAiAssistantStateContext.Provider value={state}>
       <DatasetAiAssistantActionContext.Provider
         value={{
+          loadExperimentContext,
           generateSummary,
           generateInsights,
           generateCleaningRecommendations,

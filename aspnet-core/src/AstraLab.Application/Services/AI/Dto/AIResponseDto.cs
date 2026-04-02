@@ -42,6 +42,11 @@ namespace AstraLab.Services.AI.Dto
         public long? DatasetTransformationId { get; set; }
 
         /// <summary>
+        /// Gets or sets the optional linked machine learning experiment identifier.
+        /// </summary>
+        public long? MLExperimentId { get; set; }
+
+        /// <summary>
         /// Gets or sets the optional serialized metadata payload.
         /// </summary>
         public string MetadataJson { get; set; }

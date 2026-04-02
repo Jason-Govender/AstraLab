@@ -45,11 +45,15 @@ const DatasetAssistantContent = () => {
   const { getDatasetDetails, refreshDetails } = useDatasetDetailsActions();
   const {
     activeConversationId,
+    activeExperiment,
     activeDatasetVersionId,
+    activeMlExperimentId,
     conversationErrorMessage,
     conversations,
+    experimentContextErrorMessage,
     generationErrorMessage,
     isGenerating,
+    isLoadingExperimentContext,
     isLoadingConversations,
     isLoadingResponses,
     responseErrorMessage,
@@ -63,13 +67,16 @@ const DatasetAssistantContent = () => {
     generateSummary,
     getConversations,
     getResponses,
+    loadExperimentContext,
     setActiveConversation,
   } = useDatasetAiAssistantActions();
 
   const datasetId = parseRouteNumber(params.datasetId);
   const selectedVersionId = parseRouteNumber(searchParams.get("versionId"));
+  const selectedExperimentId = parseRouteNumber(searchParams.get("experimentId"));
   const effectiveSelectedVersionId =
     selectedVersionId ?? details?.selectedVersion?.id;
+  const effectiveExperimentId = activeMlExperimentId ?? selectedExperimentId;
 
   const loadDetails = useEffectEvent(() => {
     if (!datasetId) {
@@ -83,15 +90,28 @@ const DatasetAssistantContent = () => {
     loadDetails();
   }, [datasetId, selectedVersionId]);
 
+  const loadExperiment = useEffectEvent(() => {
+    void loadExperimentContext(selectedExperimentId);
+  });
+
+  useEffect(() => {
+    loadExperiment();
+  }, [selectedExperimentId]);
+
   const loadConversations = useEffectEvent(() => {
-    if (!datasetId || !effectiveSelectedVersionId) {
+    if (!datasetId) {
       clearConversationState();
+      return;
+    }
+
+    if (!effectiveSelectedVersionId) {
       return;
     }
 
     void getConversations({
       datasetId,
       datasetVersionId: effectiveSelectedVersionId,
+      mlExperimentId: effectiveExperimentId,
       page: 1,
       pageSize: DEFAULT_CONVERSATION_PAGE_SIZE,
     });
@@ -99,7 +119,31 @@ const DatasetAssistantContent = () => {
 
   useEffect(() => {
     loadConversations();
-  }, [datasetId, effectiveSelectedVersionId]);
+  }, [datasetId, effectiveExperimentId, effectiveSelectedVersionId]);
+
+  useEffect(() => {
+    if (!datasetId || !activeExperiment) {
+      return;
+    }
+
+    if (activeExperiment.datasetVersionId === effectiveSelectedVersionId) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.set("versionId", String(activeExperiment.datasetVersionId));
+    nextSearchParams.set("experimentId", String(activeExperiment.id));
+
+    router.replace(`/datasets/${datasetId}/assistant?${nextSearchParams.toString()}`, {
+      scroll: false,
+    });
+  }, [
+    activeExperiment,
+    datasetId,
+    effectiveSelectedVersionId,
+    router,
+    searchParams,
+  ]);
 
   useEffect(() => {
     if (conversations.length === 0) {
@@ -151,6 +195,8 @@ const DatasetAssistantContent = () => {
       nextSearchParams.delete("versionId");
     }
 
+    nextSearchParams.delete("experimentId");
+
     const queryString = nextSearchParams.toString();
     router.push(
       queryString
@@ -177,12 +223,15 @@ const DatasetAssistantContent = () => {
   const datasetDetailsHref = effectiveSelectedVersionId
     ? `/datasets/${datasetId}?versionId=${effectiveSelectedVersionId}`
     : `/datasets/${datasetId}`;
+  const assistantDescription = activeExperiment
+    ? "Ask grounded questions about the selected ML experiment, explain results in plain language, and revisit stored assistant threads anchored to this run."
+    : "Ask grounded questions, generate summaries, and revisit stored assistant threads for the selected dataset version.";
 
   return (
     <>
       <WorkspacePageHeader
         title={details?.dataset.name || "Dataset AI Assistant"}
-        description="Ask grounded questions, generate summaries, and revisit stored assistant threads for the selected dataset version."
+        description={assistantDescription}
         actions={
           <div className={styles.actionGroup}>
             <Button size="large" onClick={() => router.push(datasetDetailsHref)}>
@@ -214,18 +263,33 @@ const DatasetAssistantContent = () => {
           <div className={styles.mainColumn}>
             <DatasetAiAssistantWorkspace
               datasetVersionId={activeDatasetVersionId ?? effectiveSelectedVersionId}
+              experiment={activeExperiment}
               activeConversationId={activeConversationId}
               conversations={conversations}
               responses={responses}
+              isLoadingExperimentContext={isLoadingExperimentContext}
               isLoadingConversations={isLoadingConversations}
               isLoadingResponses={isLoadingResponses}
               isGenerating={isGenerating}
+              experimentContextErrorMessage={experimentContextErrorMessage}
               conversationErrorMessage={conversationErrorMessage}
               responseErrorMessage={responseErrorMessage}
               generationErrorMessage={generationErrorMessage}
               onSelectConversation={setActiveConversation}
               onGenerateSummary={generateSummary}
-              onGenerateInsights={generateInsights}
+              onGenerateInsights={(datasetVersionId) => {
+                if (activeExperiment) {
+                  return askQuestion({
+                    datasetVersionId,
+                    mlExperimentId: activeExperiment.id,
+                    question:
+                      "Explain these experiment results in plain language and highlight the most important signals.",
+                    conversationId: activeConversationId,
+                  });
+                }
+
+                return generateInsights(datasetVersionId);
+              }}
               onGenerateRecommendations={generateCleaningRecommendations}
               onAskQuestion={(question) => {
                 const datasetVersionId =
@@ -239,6 +303,7 @@ const DatasetAssistantContent = () => {
                   datasetVersionId,
                   question,
                   conversationId: activeConversationId,
+                  mlExperimentId: activeMlExperimentId,
                 });
               }}
             />

@@ -328,6 +328,11 @@ namespace AstraLab.EntityFrameworkCore
                     .HasForeignKey(aiResponse => aiResponse.DatasetTransformationId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasOne(aiResponse => aiResponse.MLExperiment)
+                    .WithMany(mlExperiment => mlExperiment.AIResponses)
+                    .HasForeignKey(aiResponse => aiResponse.MLExperimentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasIndex(aiResponse => new { aiResponse.AIConversationId, aiResponse.CreationTime });
 
                 entity.HasIndex(aiResponse => new
@@ -339,6 +344,7 @@ namespace AstraLab.EntityFrameworkCore
                 });
 
                 entity.HasIndex(aiResponse => aiResponse.DatasetTransformationId);
+                entity.HasIndex(aiResponse => aiResponse.MLExperimentId);
             });
 
             modelBuilder.Entity<MLExperiment>(entity =>

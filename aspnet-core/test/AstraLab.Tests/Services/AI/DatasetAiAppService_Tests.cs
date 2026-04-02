@@ -7,6 +7,7 @@ using Abp.Runtime.Session;
 using Abp.UI;
 using AstraLab.Core.Domains.AI;
 using AstraLab.Core.Domains.Datasets;
+using AstraLab.Core.Domains.ML;
 using AstraLab.Services.AI;
 using AstraLab.Services.AI.Dto;
 using Castle.MicroKernel.Registration;
@@ -248,6 +249,84 @@ namespace AstraLab.Tests.Services.AI
         }
 
         [Fact]
+        public async Task GenerateExperimentSummaryAsync_Should_Create_A_Persisted_Experiment_Linked_Response()
+        {
+            var experimentId = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-experiment-summary-dataset", AbpSession.GetUserId());
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+                var seeded = AddProfileData(context, datasetVersion.Id, "amount");
+                return CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.ColumnId).Id;
+            });
+
+            _aiTextGenerationClient.GenerateTextAsync(Arg.Any<AiTextGenerationRequest>())
+                .Returns(Task.FromResult(new AiTextGenerationResult
+                {
+                    Text = "This experiment looks promising but needs stronger validation.",
+                    Provider = "groq",
+                    Model = "llama-test",
+                    ProviderResponseId = "resp_ml_summary"
+                }));
+
+            var result = await _datasetAiAppService.GenerateExperimentSummaryAsync(new EntityDto<long>(experimentId));
+
+            result.Response.ResponseType.ShouldBe(AIResponseType.Summary);
+            result.Response.MLExperimentId.ShouldBe(experimentId);
+            result.Response.MetadataJson.ShouldContain("\"mlExperimentId\":" + experimentId);
+        }
+
+        [Fact]
+        public async Task AskExperimentAsync_Should_Reject_Conversation_Reuse_Across_Different_Experiments()
+        {
+            var scenario = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-experiment-mismatch-dataset", AbpSession.GetUserId());
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+                var seeded = AddProfileData(context, datasetVersion.Id, "amount");
+                var firstExperiment = CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.ColumnId);
+                var secondExperiment = CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.ColumnId, "linear_regression");
+
+                var conversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 13, 0, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    MLExperimentId = firstExperiment.Id,
+                    UserQuery = "How does the first run look?",
+                    ResponseContent = "It looks stable.",
+                    ResponseType = AIResponseType.QuestionAnswer
+                });
+                context.SaveChanges();
+
+                return new
+                {
+                    secondExperiment.Id,
+                    ConversationId = conversation.Id
+                };
+            });
+
+            var exception = await Should.ThrowAsync<UserFriendlyException>(() =>
+                _datasetAiAppService.AskExperimentAsync(new AskExperimentAiQuestionRequest
+                {
+                    MLExperimentId = scenario.Id,
+                    ConversationId = scenario.ConversationId,
+                    Question = "Can I continue this thread on another run?"
+                }));
+
+            exception.Message.ShouldBe("The selected AI conversation belongs to a different machine learning experiment and cannot be reused for this request.");
+        }
+
+        [Fact]
         public async Task GenerateSummaryAsync_Should_Reject_A_Dataset_Version_From_A_Different_Owner()
         {
             var datasetVersionId = UsingDbContext(context =>
@@ -345,6 +424,72 @@ namespace AstraLab.Tests.Services.AI
 
             result.ShouldNotBeNull();
             result.ResponseContent.ShouldBe("Latest automatic insight.");
+        }
+
+        [Fact]
+        public async Task GetLatestAutomaticExperimentInsightAsync_Should_Return_The_Newest_Experiment_Triggered_Insight_Only()
+        {
+            var experimentId = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-auto-experiment-insight-dataset", AbpSession.GetUserId());
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+                var seeded = AddProfileData(context, datasetVersion.Id, "amount");
+                var experiment = CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.ColumnId);
+
+                var conversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 12, 30, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    MLExperimentId = experiment.Id,
+                    ResponseContent = "Manual experiment insight.",
+                    ResponseType = AIResponseType.Insight,
+                    MetadataJson = "{\"provider\":\"groq\"}",
+                    CreationTime = new DateTime(2026, 4, 2, 12, 31, 0, DateTimeKind.Utc)
+                });
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    MLExperimentId = experiment.Id,
+                    ResponseContent = "Older automatic experiment insight.",
+                    ResponseType = AIResponseType.Insight,
+                    MetadataJson = "{\"generationTrigger\":\"experimentCompleted\",\"mlExperimentId\":" + experiment.Id + "}",
+                    CreationTime = new DateTime(2026, 4, 2, 12, 32, 0, DateTimeKind.Utc)
+                });
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = conversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    MLExperimentId = experiment.Id,
+                    ResponseContent = "Latest automatic experiment insight.",
+                    ResponseType = AIResponseType.Insight,
+                    MetadataJson = "{\"generationTrigger\":\"experimentCompleted\",\"mlExperimentId\":" + experiment.Id + "}",
+                    CreationTime = new DateTime(2026, 4, 2, 12, 33, 0, DateTimeKind.Utc)
+                });
+
+                context.SaveChanges();
+                return experiment.Id;
+            });
+
+            var result = await _datasetAiAppService.GetLatestAutomaticExperimentInsightAsync(new EntityDto<long>(experimentId));
+
+            result.ShouldNotBeNull();
+            result.ResponseContent.ShouldBe("Latest automatic experiment insight.");
         }
 
         [Fact]
@@ -468,6 +613,78 @@ namespace AstraLab.Tests.Services.AI
 
             filteredResults.TotalCount.ShouldBe(1);
             filteredResults.Items.Single().Id.ShouldBe(scenario.OlderConversationId);
+        }
+
+        [Fact]
+        public async Task GetConversationsAsync_Should_Filter_By_MLExperimentId()
+        {
+            var scenario = UsingDbContext(context =>
+            {
+                var dataset = CreateDataset(context, "ai-experiment-conversation-list-dataset", AbpSession.GetUserId());
+                var datasetVersion = CreateDatasetVersion(context, dataset.Id, 1, DatasetVersionType.Raw);
+                var seeded = AddProfileData(context, datasetVersion.Id, "amount");
+                var firstExperiment = CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.ColumnId);
+                var secondExperiment = CreateCompletedMlExperiment(context, datasetVersion.Id, seeded.ColumnId, "linear_regression");
+
+                var firstConversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 12, 10, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                var secondConversation = context.AIConversations.Add(new AIConversation
+                {
+                    TenantId = 1,
+                    DatasetId = dataset.Id,
+                    OwnerUserId = AbpSession.GetUserId(),
+                    LastInteractionTime = new DateTime(2026, 4, 2, 12, 20, 0, DateTimeKind.Utc)
+                }).Entity;
+
+                context.SaveChanges();
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = firstConversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    MLExperimentId = firstExperiment.Id,
+                    ResponseContent = "First experiment response.",
+                    ResponseType = AIResponseType.Summary
+                });
+
+                context.AIResponses.Add(new AIResponse
+                {
+                    TenantId = 1,
+                    AIConversationId = secondConversation.Id,
+                    DatasetVersionId = datasetVersion.Id,
+                    MLExperimentId = secondExperiment.Id,
+                    ResponseContent = "Second experiment response.",
+                    ResponseType = AIResponseType.Summary
+                });
+
+                context.SaveChanges();
+
+                return new
+                {
+                    DatasetId = dataset.Id,
+                    FirstExperimentId = firstExperiment.Id,
+                    SecondConversationId = secondConversation.Id
+                };
+            });
+
+            var result = await _datasetAiAppService.GetConversationsAsync(new GetDatasetAiConversationsRequest
+            {
+                DatasetId = scenario.DatasetId,
+                MLExperimentId = scenario.FirstExperimentId,
+                SkipCount = 0,
+                MaxResultCount = 10
+            });
+
+            result.TotalCount.ShouldBe(1);
+            result.Items.Single().LatestMLExperimentId.ShouldBe(scenario.FirstExperimentId);
+            result.Items.Single().Id.ShouldNotBe(scenario.SecondConversationId);
         }
 
         [Fact]
@@ -611,7 +828,7 @@ namespace AstraLab.Tests.Services.AI
             return datasetVersion;
         }
 
-        private static void AddProfileData(AstraLab.EntityFrameworkCore.AstraLabDbContext context, long datasetVersionId, string columnName)
+        private static ProfileSeedResult AddProfileData(AstraLab.EntityFrameworkCore.AstraLabDbContext context, long datasetVersionId, string columnName)
         {
             var column = context.DatasetColumns.Add(new DatasetColumn
             {
@@ -651,6 +868,68 @@ namespace AstraLab.Tests.Services.AI
             });
 
             context.SaveChanges();
+            return new ProfileSeedResult(column.Id, datasetProfile.Id);
+        }
+
+        private static MLExperiment CreateCompletedMlExperiment(
+            AstraLab.EntityFrameworkCore.AstraLabDbContext context,
+            long datasetVersionId,
+            long targetDatasetColumnId,
+            string algorithmKey = "random_forest_classifier")
+        {
+            var experiment = context.MLExperiments.Add(new MLExperiment
+            {
+                TenantId = 1,
+                DatasetVersionId = datasetVersionId,
+                TargetDatasetColumnId = targetDatasetColumnId,
+                Status = MLExperimentStatus.Completed,
+                TaskType = MLTaskType.Classification,
+                AlgorithmKey = algorithmKey,
+                TrainingConfigurationJson = "{\"testSize\":0.2}",
+                ExecutedAt = new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc),
+                StartedAtUtc = new DateTime(2026, 4, 2, 12, 1, 0, DateTimeKind.Utc),
+                CompletedAtUtc = new DateTime(2026, 4, 2, 12, 2, 0, DateTimeKind.Utc),
+                WarningsJson = "[\"class_imbalance\"]"
+            }).Entity;
+
+            context.SaveChanges();
+
+            var model = context.MLModels.Add(new MLModel
+            {
+                TenantId = 1,
+                MLExperimentId = experiment.Id,
+                ModelType = algorithmKey,
+                ArtifactStorageProvider = "local-filesystem",
+                ArtifactStorageKey = "ml-artifacts/test/model.joblib",
+                PerformanceSummaryJson = "{\"primaryMetric\":\"accuracy\"}",
+                WarningsJson = "[\"small_validation_split\"]"
+            }).Entity;
+
+            context.SaveChanges();
+
+            context.MLModelMetrics.Add(new MLModelMetric
+            {
+                TenantId = 1,
+                MLModelId = model.Id,
+                MetricName = "accuracy",
+                MetricValue = 0.91m
+            });
+
+            context.SaveChanges();
+            return experiment;
+        }
+
+        private class ProfileSeedResult
+        {
+            public ProfileSeedResult(long columnId, long datasetProfileId)
+            {
+                ColumnId = columnId;
+                DatasetProfileId = datasetProfileId;
+            }
+
+            public long ColumnId { get; }
+
+            public long DatasetProfileId { get; }
         }
     }
 }

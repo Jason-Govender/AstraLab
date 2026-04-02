@@ -7,6 +7,7 @@ const { Paragraph, Title } = Typography;
 
 interface DatasetAiQuickActionsCardProps {
   datasetVersionId?: number;
+  isExperimentScoped?: boolean;
   isLoading?: boolean;
   onGenerateSummary: (datasetVersionId: number) => Promise<void>;
   onGenerateInsights: (datasetVersionId: number) => Promise<void>;
@@ -15,6 +16,7 @@ interface DatasetAiQuickActionsCardProps {
 
 export const DatasetAiQuickActionsCard = ({
   datasetVersionId,
+  isExperimentScoped = false,
   isLoading = false,
   onGenerateSummary,
   onGenerateInsights,
@@ -26,8 +28,7 @@ export const DatasetAiQuickActionsCard = ({
     <Card className={styles.card}>
       <Title level={4}>Quick AI actions</Title>
       <Paragraph className={styles.helperText}>
-        Start with a guided action if you want the assistant to do the first
-        pass for you.
+        Start with a guided action if you want the assistant to do the first pass for you.
       </Paragraph>
       <div className={styles.actions}>
         <Button
@@ -36,14 +37,14 @@ export const DatasetAiQuickActionsCard = ({
           disabled={!datasetVersionId}
           onClick={() => datasetVersionId && void onGenerateSummary(datasetVersionId)}
         >
-          Summarize this dataset
+          {isExperimentScoped ? "Summarize this experiment" : "Summarize this dataset"}
         </Button>
         <Button
           loading={isLoading}
           disabled={!datasetVersionId}
           onClick={() => datasetVersionId && void onGenerateInsights(datasetVersionId)}
         >
-          Explain key issues
+          {isExperimentScoped ? "Explain these results" : "Explain key issues"}
         </Button>
         <Button
           loading={isLoading}
@@ -52,7 +53,7 @@ export const DatasetAiQuickActionsCard = ({
             datasetVersionId && void onGenerateRecommendations(datasetVersionId)
           }
         >
-          Recommend cleaning steps
+          {isExperimentScoped ? "Recommend next steps" : "Recommend cleaning steps"}
         </Button>
       </div>
     </Card>

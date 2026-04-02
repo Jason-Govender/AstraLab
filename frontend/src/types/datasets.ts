@@ -105,6 +105,7 @@ export interface AIResponse {
   responseContent: string;
   responseType: AIResponseType;
   datasetTransformationId?: number | null;
+  mlExperimentId?: number | null;
   metadataJson?: string | null;
   creationTime: string;
 }
@@ -118,12 +119,19 @@ export interface AIConversation {
   responseCount: number;
   latestDatasetVersionId?: number | null;
   latestResponseType?: AIResponseType | null;
+  latestMlExperimentId?: number | null;
   latestUserQuery?: string | null;
   latestResponsePreview?: string | null;
 }
 
 export interface AskDatasetAiQuestionRequest {
   datasetVersionId: number;
+  question: string;
+  conversationId?: number;
+}
+
+export interface AskExperimentAiQuestionRequest {
+  mlExperimentId: number;
   question: string;
   conversationId?: number;
 }
@@ -136,6 +144,7 @@ export interface GenerateDatasetAiResponseResult {
 export interface GetDatasetAiConversationsRequest {
   datasetId: number;
   datasetVersionId?: number;
+  mlExperimentId?: number;
   page: number;
   pageSize: number;
 }

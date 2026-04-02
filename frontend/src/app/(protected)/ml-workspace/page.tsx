@@ -22,6 +22,7 @@ import {
   useDatasetDetailsActions,
   useDatasetDetailsState,
 } from "@/providers/datasetDetailsProvider";
+import { MlExperimentAutoInsightProvider } from "@/providers/mlExperimentAutoInsightProvider";
 import { MlExperimentsProvider } from "@/providers/mlExperimentsProvider";
 import { formatDateTime, getDatasetVersionTypeLabel } from "@/utils/datasets";
 import { buildMlWorkspaceHref } from "@/utils/ml";
@@ -60,7 +61,6 @@ const MlWorkspacePageContent = () => {
     isLoadingDetails,
   } = useDatasetDetailsState();
   const [datasetKeyword, setDatasetKeyword] = useState("");
-  const [selectionMessage, setSelectionMessage] = useState<string>();
   const deferredDatasetKeyword = useDeferredValue(datasetKeyword);
 
   const datasetId = parseQueryNumber(searchParams.get("datasetId"));
@@ -90,7 +90,6 @@ const MlWorkspacePageContent = () => {
 
   useEffect(() => {
     if (!datasetId) {
-      setSelectionMessage(undefined);
       return;
     }
 
@@ -110,9 +109,6 @@ const MlWorkspacePageContent = () => {
     if (versionId && !selectedVersionIds.includes(versionId)) {
       const fallbackVersionId = currentDetails.selectedVersion?.id;
 
-      setSelectionMessage(
-        "The selected version does not belong to this dataset, so the workspace switched to the default version.",
-      );
       router.replace(buildMlWorkspaceHref(datasetId, fallbackVersionId), {
         scroll: false,
       });
@@ -128,8 +124,6 @@ const MlWorkspacePageContent = () => {
       );
       return;
     }
-
-    setSelectionMessage(undefined);
   }, [currentDetails, datasetId, router, selectedVersionIds, versionId]);
 
   const datasetOptions = useMemo(() => {
@@ -152,7 +146,7 @@ const MlWorkspacePageContent = () => {
     return Array.from(optionMap.values()).sort((left, right) =>
       left.label.localeCompare(right.label),
     );
-  }, [currentDetails?.dataset, datasets]);
+  }, [currentDetails, datasets]);
 
   const versionOptions = useMemo(
     () =>
@@ -170,7 +164,6 @@ const MlWorkspacePageContent = () => {
     : undefined;
 
   const handleDatasetChange = (nextDatasetId?: number) => {
-    setSelectionMessage(undefined);
     router.push(buildMlWorkspaceHref(nextDatasetId));
   };
 
@@ -179,7 +172,6 @@ const MlWorkspacePageContent = () => {
       return;
     }
 
-    setSelectionMessage(undefined);
     router.push(buildMlWorkspaceHref(datasetId, nextVersionId));
   };
 
@@ -216,7 +208,7 @@ const MlWorkspacePageContent = () => {
                 notFoundContent={
                   isLoadingCatalog ? "Loading datasets..." : "No datasets found."
                 }
-                style={{ marginTop: 8, width: "100%" }}
+                className={styles.selectInput}
               />
             </div>
 
@@ -234,7 +226,7 @@ const MlWorkspacePageContent = () => {
                 options={versionOptions}
                 disabled={!datasetId || !hasVersions || isLoadingDetails}
                 onChange={handleVersionChange}
-                style={{ marginTop: 8, width: "100%" }}
+                className={styles.selectInput}
               />
             </div>
           </div>
@@ -249,10 +241,6 @@ const MlWorkspacePageContent = () => {
             </Paragraph>
           ) : null}
         </Card>
-
-        {selectionMessage ? (
-          <Alert type="warning" showIcon message={selectionMessage} />
-        ) : null}
 
         {isDatasetCatalogError ? (
           <Alert
@@ -308,6 +296,7 @@ const MlWorkspacePageContent = () => {
 
         {datasetId && currentDetails && hasVersions ? (
           <MlExperimentWorkspace
+            datasetId={currentDetails.dataset.id}
             datasetVersionId={effectiveSelectedVersionId}
             columns={currentDetails.columns}
             hasRawFile={Boolean(currentDetails.selectedVersion?.rawFile)}
@@ -322,7 +311,9 @@ const MlWorkspacePage = () => (
   <DatasetCatalogProvider>
     <DatasetDetailsProvider>
       <MlExperimentsProvider>
-        <MlWorkspacePageContent />
+        <MlExperimentAutoInsightProvider>
+          <MlWorkspacePageContent />
+        </MlExperimentAutoInsightProvider>
       </MlExperimentsProvider>
     </DatasetDetailsProvider>
   </DatasetCatalogProvider>

@@ -1,6 +1,7 @@
 using Abp.Domain.Entities;
 using Abp.Domain.Entities.Auditing;
 using AstraLab.Core.Domains.Datasets;
+using AstraLab.Core.Domains.ML;
 
 namespace AstraLab.Core.Domains.AI
 {
@@ -73,6 +74,16 @@ namespace AstraLab.Core.Domains.AI
         /// Gets or sets the optional linked dataset transformation.
         /// </summary>
         public DatasetTransformation DatasetTransformation { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional linked machine learning experiment identifier.
+        /// </summary>
+        public long? MLExperimentId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional linked machine learning experiment.
+        /// </summary>
+        public MLExperiment MLExperiment { get; set; }
 
         /// <summary>
         /// Gets or sets the optional serialized metadata payload for future extensibility.

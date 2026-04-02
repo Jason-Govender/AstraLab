@@ -2,14 +2,17 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Abp.Application.Services.Dto;
+using Abp.BackgroundJobs;
 using Abp.Domain.Entities;
 using Abp.Runtime.Session;
 using Abp.UI;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Core.Domains.ML;
 using AstraLab.MultiTenancy;
+using AstraLab.Services.AI;
 using AstraLab.Services.ML;
 using AstraLab.Services.ML.Dto;
+using Castle.MicroKernel.Registration;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -20,14 +23,26 @@ namespace AstraLab.Tests.Services.ML
     {
         private readonly IMLExperimentAppService _mlExperimentAppService;
         private readonly IMLExperimentExecutionManager _mlExperimentExecutionManager;
+        private readonly IBackgroundJobManager _backgroundJobManager;
         private readonly IMLJobDispatcher _mlJobDispatcher;
 
         public MLExperimentAppService_Tests()
         {
+            _backgroundJobManager = Substitute.For<IBackgroundJobManager>();
+            _mlJobDispatcher = Resolve<IMLJobDispatcher>();
+            LocalIocManager.IocContainer.Register(
+                Component.For<IBackgroundJobManager>()
+                    .Instance(_backgroundJobManager)
+                    .IsDefault()
+                    .LifestyleSingleton());
             _mlExperimentAppService = Resolve<IMLExperimentAppService>();
             _mlExperimentExecutionManager = Resolve<IMLExperimentExecutionManager>();
-            _mlJobDispatcher = Resolve<IMLJobDispatcher>();
             _mlJobDispatcher.DispatchAsync(Arg.Any<DispatchMlExperimentRequest>()).Returns(Task.CompletedTask);
+            _backgroundJobManager.EnqueueAsync<GenerateAutomaticExperimentInsightJob, GenerateAutomaticExperimentInsightJobArgs>(
+                    Arg.Any<GenerateAutomaticExperimentInsightJobArgs>(),
+                    Arg.Any<BackgroundJobPriority>(),
+                    Arg.Any<TimeSpan?>())
+                .Returns(Task.FromResult("ml-ai-job-1"));
         }
 
         [Fact]
@@ -268,6 +283,15 @@ namespace AstraLab.Tests.Services.ML
                 context.MLModelFeatureImportances.Count(item => item.MLModelId == model.Id).ShouldBe(2);
                 await Task.CompletedTask;
             });
+
+            await _backgroundJobManager.Received(1).EnqueueAsync<GenerateAutomaticExperimentInsightJob, GenerateAutomaticExperimentInsightJobArgs>(
+                Arg.Is<GenerateAutomaticExperimentInsightJobArgs>(item =>
+                    item.MLExperimentId == experimentId &&
+                    item.DatasetVersionId == seeded.DatasetVersionId &&
+                    item.TenantId == 1 &&
+                    item.OwnerUserId == AbpSession.GetUserId()),
+                Arg.Any<BackgroundJobPriority>(),
+                Arg.Any<TimeSpan?>());
         }
 
         [Fact]
@@ -300,6 +324,11 @@ namespace AstraLab.Tests.Services.ML
                 context.MLModels.Count(item => item.MLExperimentId == experimentId).ShouldBe(0);
                 await Task.CompletedTask;
             });
+
+            await _backgroundJobManager.DidNotReceive().EnqueueAsync<GenerateAutomaticExperimentInsightJob, GenerateAutomaticExperimentInsightJobArgs>(
+                Arg.Any<GenerateAutomaticExperimentInsightJobArgs>(),
+                Arg.Any<BackgroundJobPriority>(),
+                Arg.Any<TimeSpan?>());
         }
 
         [Fact]

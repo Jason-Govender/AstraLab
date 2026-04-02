@@ -2,7 +2,9 @@
 
 import { Alert } from "antd";
 import type { AIConversation, AIResponse } from "@/types/datasets";
+import type { MlExperiment } from "@/types/ml";
 import { DatasetAiConversationListCard } from "../datasetAiConversationListCard";
+import { DatasetAiExperimentContextCard } from "../datasetAiExperimentContextCard";
 import { DatasetAiPromptComposer } from "../datasetAiPromptComposer";
 import { DatasetAiQuickActionsCard } from "../datasetAiQuickActionsCard";
 import { DatasetAiResponseThreadCard } from "../datasetAiResponseThreadCard";
@@ -10,12 +12,15 @@ import { useStyles } from "./style";
 
 interface DatasetAiAssistantWorkspaceProps {
   datasetVersionId?: number;
+  experiment?: MlExperiment;
   activeConversationId?: number;
   conversations: AIConversation[];
   responses: AIResponse[];
+  isLoadingExperimentContext?: boolean;
   isLoadingConversations?: boolean;
   isLoadingResponses?: boolean;
   isGenerating?: boolean;
+  experimentContextErrorMessage?: string;
   conversationErrorMessage?: string;
   responseErrorMessage?: string;
   generationErrorMessage?: string;
@@ -28,12 +33,15 @@ interface DatasetAiAssistantWorkspaceProps {
 
 export const DatasetAiAssistantWorkspace = ({
   datasetVersionId,
+  experiment,
   activeConversationId,
   conversations,
   responses,
+  isLoadingExperimentContext = false,
   isLoadingConversations = false,
   isLoadingResponses = false,
   isGenerating = false,
+  experimentContextErrorMessage,
   conversationErrorMessage,
   responseErrorMessage,
   generationErrorMessage,
@@ -44,13 +52,21 @@ export const DatasetAiAssistantWorkspace = ({
   onAskQuestion,
 }: DatasetAiAssistantWorkspaceProps) => {
   const { styles } = useStyles();
+  const isExperimentScoped = Boolean(experiment);
 
   return (
     <div className={styles.layout}>
       <div className={styles.sideColumn}>
+        <DatasetAiExperimentContextCard
+          experiment={experiment}
+          isLoading={isLoadingExperimentContext}
+          isError={Boolean(experimentContextErrorMessage)}
+          errorMessage={experimentContextErrorMessage}
+        />
         <DatasetAiConversationListCard
           conversations={conversations}
           activeConversationId={activeConversationId}
+          isExperimentScoped={isExperimentScoped}
           isLoading={isLoadingConversations}
           isError={Boolean(conversationErrorMessage)}
           errorMessage={conversationErrorMessage}
@@ -70,6 +86,7 @@ export const DatasetAiAssistantWorkspace = ({
 
         <DatasetAiQuickActionsCard
           datasetVersionId={datasetVersionId}
+          isExperimentScoped={isExperimentScoped}
           isLoading={isGenerating}
           onGenerateSummary={onGenerateSummary}
           onGenerateInsights={onGenerateInsights}

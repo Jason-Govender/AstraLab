@@ -47,6 +47,11 @@ namespace AstraLab.Services.AI.Dto
         public AIResponseType? LatestResponseType { get; set; }
 
         /// <summary>
+        /// Gets or sets the optional latest machine learning experiment identifier represented in the conversation.
+        /// </summary>
+        public long? LatestMLExperimentId { get; set; }
+
+        /// <summary>
         /// Gets or sets the optional latest user query that led to the current response.
         /// </summary>
         public string LatestUserQuery { get; set; }

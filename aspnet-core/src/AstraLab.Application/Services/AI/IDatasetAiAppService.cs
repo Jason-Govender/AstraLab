@@ -26,9 +26,24 @@ namespace AstraLab.Services.AI
         Task<GenerateDatasetAiResponseResult> GenerateCleaningRecommendationsAsync(EntityDto<long> datasetVersionId);
 
         /// <summary>
+        /// Generates a concise summary for the selected machine learning experiment.
+        /// </summary>
+        Task<GenerateDatasetAiResponseResult> GenerateExperimentSummaryAsync(EntityDto<long> mlExperimentId);
+
+        /// <summary>
+        /// Generates concise next-step recommendations for the selected machine learning experiment.
+        /// </summary>
+        Task<GenerateDatasetAiResponseResult> GenerateExperimentRecommendationsAsync(EntityDto<long> mlExperimentId);
+
+        /// <summary>
         /// Answers a grounded natural-language question about the selected dataset version.
         /// </summary>
         Task<GenerateDatasetAiResponseResult> AskAsync(AskDatasetAiQuestionRequest input);
+
+        /// <summary>
+        /// Answers a grounded natural-language question about the selected machine learning experiment.
+        /// </summary>
+        Task<GenerateDatasetAiResponseResult> AskExperimentAsync(AskExperimentAiQuestionRequest input);
 
         /// <summary>
         /// Gets a persisted AI conversation summary for the selected conversation.
@@ -49,5 +64,10 @@ namespace AstraLab.Services.AI
         /// Gets the latest persisted profiling-triggered automatic insight for the selected dataset version.
         /// </summary>
         Task<AIResponseDto> GetLatestAutomaticInsightAsync(EntityDto<long> datasetVersionId);
+
+        /// <summary>
+        /// Gets the latest persisted experiment-completed automatic insight for the selected machine learning experiment.
+        /// </summary>
+        Task<AIResponseDto> GetLatestAutomaticExperimentInsightAsync(EntityDto<long> mlExperimentId);
     }
 }

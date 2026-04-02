@@ -16,5 +16,10 @@ namespace AstraLab.Services.AI.Dto
         /// Gets or sets the optional dataset version identifier used to narrow the returned conversations.
         /// </summary>
         public long? DatasetVersionId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional machine learning experiment identifier used to narrow the returned conversations.
+        /// </summary>
+        public long? MLExperimentId { get; set; }
     }
 }

@@ -7,6 +7,7 @@ using Abp.Runtime.Session;
 using Abp.UI;
 using AstraLab.Authorization;
 using AstraLab.Core.Domains.AI;
+using AstraLab.Core.Domains.ML;
 using AstraLab.Services.Datasets;
 using AstraLab.Services.AI.Dto;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,7 @@ namespace AstraLab.Services.AI
         private readonly IAiDatasetResponseGenerator _aiDatasetResponseGenerator;
         private readonly IRepository<AIConversation, long> _aiConversationRepository;
         private readonly IRepository<AIResponse, long> _aiResponseRepository;
+        private readonly IRepository<MLExperiment, long> _mlExperimentRepository;
         private readonly IDatasetOwnershipAccessChecker _datasetOwnershipAccessChecker;
 
         /// <summary>
@@ -35,11 +37,13 @@ namespace AstraLab.Services.AI
             IAiDatasetResponseGenerator aiDatasetResponseGenerator,
             IRepository<AIConversation, long> aiConversationRepository,
             IRepository<AIResponse, long> aiResponseRepository,
+            IRepository<MLExperiment, long> mlExperimentRepository,
             IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker)
         {
             _aiDatasetResponseGenerator = aiDatasetResponseGenerator;
             _aiConversationRepository = aiConversationRepository;
             _aiResponseRepository = aiResponseRepository;
+            _mlExperimentRepository = mlExperimentRepository;
             _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
         }
 
@@ -80,6 +84,36 @@ namespace AstraLab.Services.AI
         }
 
         /// <summary>
+        /// Generates a concise summary for the selected machine learning experiment.
+        /// </summary>
+        public async Task<GenerateDatasetAiResponseResult> GenerateExperimentSummaryAsync(EntityDto<long> mlExperimentId)
+        {
+            var experiment = await GetValidatedExperimentAsync(mlExperimentId.Id, GetRequiredTenantId(), AbpSession.GetUserId());
+
+            return await _aiDatasetResponseGenerator.GenerateAsync(
+                AIResponseType.Summary,
+                experiment.DatasetVersionId,
+                GetRequiredTenantId(),
+                AbpSession.GetUserId(),
+                mlExperimentId: experiment.Id);
+        }
+
+        /// <summary>
+        /// Generates concise next-step recommendations for the selected machine learning experiment.
+        /// </summary>
+        public async Task<GenerateDatasetAiResponseResult> GenerateExperimentRecommendationsAsync(EntityDto<long> mlExperimentId)
+        {
+            var experiment = await GetValidatedExperimentAsync(mlExperimentId.Id, GetRequiredTenantId(), AbpSession.GetUserId());
+
+            return await _aiDatasetResponseGenerator.GenerateAsync(
+                AIResponseType.Recommendation,
+                experiment.DatasetVersionId,
+                GetRequiredTenantId(),
+                AbpSession.GetUserId(),
+                mlExperimentId: experiment.Id);
+        }
+
+        /// <summary>
         /// Answers a grounded natural-language question about the selected dataset version.
         /// </summary>
         public Task<GenerateDatasetAiResponseResult> AskAsync(AskDatasetAiQuestionRequest input)
@@ -91,6 +125,23 @@ namespace AstraLab.Services.AI
                 AbpSession.GetUserId(),
                 input.Question,
                 input.ConversationId);
+        }
+
+        /// <summary>
+        /// Answers a grounded natural-language question about the selected machine learning experiment.
+        /// </summary>
+        public async Task<GenerateDatasetAiResponseResult> AskExperimentAsync(AskExperimentAiQuestionRequest input)
+        {
+            var experiment = await GetValidatedExperimentAsync(input.MLExperimentId, GetRequiredTenantId(), AbpSession.GetUserId());
+
+            return await _aiDatasetResponseGenerator.GenerateAsync(
+                AIResponseType.QuestionAnswer,
+                experiment.DatasetVersionId,
+                GetRequiredTenantId(),
+                AbpSession.GetUserId(),
+                input.Question,
+                input.ConversationId,
+                experiment.Id);
         }
 
         /// <summary>
@@ -124,6 +175,22 @@ namespace AstraLab.Services.AI
                 }
             }
 
+            if (input.MLExperimentId.HasValue)
+            {
+                var experiment = await GetValidatedExperimentAsync(input.MLExperimentId.Value, tenantId, ownerUserId);
+                var datasetVersion = await _datasetOwnershipAccessChecker.GetDatasetVersionForOwnerAsync(experiment.DatasetVersionId, tenantId, ownerUserId);
+
+                if (datasetVersion.DatasetId != input.DatasetId)
+                {
+                    throw new UserFriendlyException("The selected ML experiment does not belong to the requested dataset.");
+                }
+
+                if (input.DatasetVersionId.HasValue && input.DatasetVersionId.Value != experiment.DatasetVersionId)
+                {
+                    throw new UserFriendlyException("The selected ML experiment does not belong to the requested dataset version.");
+                }
+            }
+
             var responseQuery = _aiResponseRepository.GetAll();
             var conversationQuery = _aiConversationRepository.GetAll()
                 .Where(item =>
@@ -138,6 +205,15 @@ namespace AstraLab.Services.AI
                     responseQuery.Any(response =>
                         response.AIConversationId == item.Id &&
                         response.DatasetVersionId == datasetVersionId));
+            }
+
+            if (input.MLExperimentId.HasValue)
+            {
+                var mlExperimentId = input.MLExperimentId.Value;
+                conversationQuery = conversationQuery.Where(item =>
+                    responseQuery.Any(response =>
+                        response.AIConversationId == item.Id &&
+                        response.MLExperimentId == mlExperimentId));
             }
 
             var totalCount = await conversationQuery.CountAsync();
@@ -213,6 +289,31 @@ namespace AstraLab.Services.AI
                 : ObjectMapper.Map<AIResponseDto>(response);
         }
 
+        /// <summary>
+        /// Gets the latest experiment-completed automatic insight for the selected machine learning experiment when one exists.
+        /// </summary>
+        public async Task<AIResponseDto> GetLatestAutomaticExperimentInsightAsync(EntityDto<long> mlExperimentId)
+        {
+            var tenantId = GetRequiredTenantId();
+            await GetValidatedExperimentAsync(mlExperimentId.Id, tenantId, AbpSession.GetUserId());
+
+            var latestAutomaticInsight = await _aiResponseRepository.GetAll()
+                .Where(item =>
+                    item.TenantId == tenantId &&
+                    item.MLExperimentId == mlExperimentId.Id &&
+                    item.ResponseType == AIResponseType.Insight)
+                .OrderByDescending(item => item.CreationTime)
+                .ThenByDescending(item => item.Id)
+                .ToListAsync();
+
+            var response = latestAutomaticInsight
+                .FirstOrDefault(item => AiAutomaticInsightMetadata.IsAutomaticExperimentInsight(item.MetadataJson));
+
+            return response == null
+                ? null
+                : ObjectMapper.Map<AIResponseDto>(response);
+        }
+
         private int GetRequiredTenantId()
         {
             if (!AbpSession.TenantId.HasValue)
@@ -242,6 +343,27 @@ namespace AstraLab.Services.AI
 
             await _datasetOwnershipAccessChecker.GetDatasetForOwnerAsync(conversation.DatasetId, tenantId, ownerUserId);
             return conversation;
+        }
+
+        /// <summary>
+        /// Gets a tenant-owned machine learning experiment scoped to the current dataset owner.
+        /// </summary>
+        private async Task<MLExperiment> GetValidatedExperimentAsync(long mlExperimentId, int tenantId, long ownerUserId)
+        {
+            var experiment = await _mlExperimentRepository.GetAll()
+                .Where(item =>
+                    item.Id == mlExperimentId &&
+                    item.TenantId == tenantId &&
+                    item.DatasetVersion.TenantId == tenantId &&
+                    item.DatasetVersion.Dataset.OwnerUserId == ownerUserId)
+                .SingleOrDefaultAsync();
+
+            if (experiment == null)
+            {
+                throw new UserFriendlyException("The requested ML experiment could not be found.");
+            }
+
+            return experiment;
         }
 
         /// <summary>
@@ -296,6 +418,7 @@ namespace AstraLab.Services.AI
                 ResponseCount = responses?.Count ?? 0,
                 LatestDatasetVersionId = latestResponse?.DatasetVersionId,
                 LatestResponseType = latestResponse?.ResponseType,
+                LatestMLExperimentId = latestResponse?.MLExperimentId,
                 LatestUserQuery = latestResponse?.UserQuery,
                 LatestResponsePreview = BuildResponsePreview(latestResponse?.ResponseContent)
             };

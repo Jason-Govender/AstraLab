@@ -10,6 +10,7 @@ const { Paragraph, Text, Title } = Typography;
 interface DatasetAiConversationListCardProps {
   conversations: AIConversation[];
   activeConversationId?: number;
+  isExperimentScoped?: boolean;
   isLoading?: boolean;
   isError?: boolean;
   errorMessage?: string;
@@ -19,6 +20,7 @@ interface DatasetAiConversationListCardProps {
 export const DatasetAiConversationListCard = ({
   conversations,
   activeConversationId,
+  isExperimentScoped = false,
   isLoading = false,
   isError = false,
   errorMessage,
@@ -40,7 +42,11 @@ export const DatasetAiConversationListCard = ({
       ) : conversations.length === 0 ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="No AI conversations have been created for this dataset version yet."
+          description={
+            isExperimentScoped
+              ? "No AI conversations have been created for this experiment yet."
+              : "No AI conversations have been created for this dataset version yet."
+          }
         />
       ) : (
         <div className={styles.list}>

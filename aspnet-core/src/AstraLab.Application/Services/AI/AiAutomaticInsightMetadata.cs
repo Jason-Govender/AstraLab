@@ -13,6 +13,11 @@ namespace AstraLab.Services.AI
         /// </summary>
         public const string ProfilingCompletedGenerationTrigger = "profilingCompleted";
 
+        /// <summary>
+        /// The metadata trigger value used for experiment-completed automatic insights.
+        /// </summary>
+        public const string ExperimentCompletedGenerationTrigger = "experimentCompleted";
+
         private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -44,6 +49,33 @@ namespace AstraLab.Services.AI
             }
 
             return metadata.GenerationTrigger == ProfilingCompletedGenerationTrigger;
+        }
+
+        /// <summary>
+        /// Determines whether the persisted metadata belongs to an automatic experiment-completed insight.
+        /// </summary>
+        public static bool IsAutomaticExperimentInsight(string metadataJson, long mlExperimentId)
+        {
+            if (!TryRead(metadataJson, out var metadata))
+            {
+                return false;
+            }
+
+            return metadata.GenerationTrigger == ExperimentCompletedGenerationTrigger &&
+                   metadata.MLExperimentId == mlExperimentId;
+        }
+
+        /// <summary>
+        /// Determines whether the persisted metadata belongs to any experiment-completed automatic insight.
+        /// </summary>
+        public static bool IsAutomaticExperimentInsight(string metadataJson)
+        {
+            if (!TryRead(metadataJson, out var metadata))
+            {
+                return false;
+            }
+
+            return metadata.GenerationTrigger == ExperimentCompletedGenerationTrigger;
         }
 
         /// <summary>
@@ -83,6 +115,11 @@ namespace AstraLab.Services.AI
             /// Gets or sets the dataset profile identifier used to ground the automatic insight.
             /// </summary>
             public long? DatasetProfileId { get; set; }
+
+            /// <summary>
+            /// Gets or sets the machine learning experiment identifier used to ground the automatic insight.
+            /// </summary>
+            public long? MLExperimentId { get; set; }
         }
     }
 }

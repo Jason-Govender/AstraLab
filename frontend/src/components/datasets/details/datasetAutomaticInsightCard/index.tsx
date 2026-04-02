@@ -19,9 +19,14 @@ interface DatasetAutomaticInsightCardProps {
   isError?: boolean;
   errorMessage?: string;
   onRetry?: () => void;
+  title?: string;
+  description?: string;
+  emptyDescription?: string;
+  retryLabel?: string;
+  expectedSectionTitles?: string[];
 }
 
-const EXPECTED_SECTION_TITLES = [
+const DEFAULT_EXPECTED_SECTION_TITLES = [
   "Summary",
   "Key data quality issues",
   "Notable patterns or anomalies",
@@ -30,7 +35,10 @@ const EXPECTED_SECTION_TITLES = [
 
 const normalizeSectionTitle = (value: string) => value.trim().replace(/:$/, "");
 
-const parseInsightSections = (content?: string | null): InsightSection[] => {
+const parseInsightSections = (
+  content: string | null | undefined,
+  expectedSectionTitles: string[],
+): InsightSection[] => {
   if (!content?.trim()) {
     return [];
   }
@@ -46,7 +54,7 @@ const parseInsightSections = (content?: string | null): InsightSection[] => {
       const [firstLine, ...remainingLines] = block.split("\n");
       const normalizedTitle = normalizeSectionTitle(firstLine);
 
-      if (!EXPECTED_SECTION_TITLES.includes(normalizedTitle)) {
+      if (!expectedSectionTitles.includes(normalizedTitle)) {
         return null;
       }
 
@@ -57,7 +65,7 @@ const parseInsightSections = (content?: string | null): InsightSection[] => {
     })
     .filter((section): section is InsightSection => section !== null);
 
-  return sections.length === EXPECTED_SECTION_TITLES.length ? sections : [];
+  return sections.length === expectedSectionTitles.length ? sections : [];
 };
 
 export const DatasetAutomaticInsightCard = ({
@@ -66,9 +74,17 @@ export const DatasetAutomaticInsightCard = ({
   isError = false,
   errorMessage,
   onRetry,
+  title = "AI Insight",
+  description = "Automatic plain-language guidance generated from the latest profiling context for this dataset version.",
+  emptyDescription = "An automatic AI insight has not been generated for this version yet.",
+  retryLabel = "Retry AI insight",
+  expectedSectionTitles = DEFAULT_EXPECTED_SECTION_TITLES,
 }: DatasetAutomaticInsightCardProps) => {
   const { styles } = useStyles();
-  const sections = parseInsightSections(insight?.responseContent);
+  const sections = parseInsightSections(
+    insight?.responseContent,
+    expectedSectionTitles,
+  );
   const extra: ReactNode = insight ? (
     <Tag color="blue">Generated {formatDateTime(insight.creationTime)}</Tag>
   ) : null;
@@ -78,11 +94,10 @@ export const DatasetAutomaticInsightCard = ({
       <div className={styles.header}>
         <div>
           <Title level={4} className={styles.title}>
-            AI Insight
+            {title}
           </Title>
           <Paragraph className={styles.helperText}>
-            Automatic plain-language guidance generated from the latest
-            profiling context for this dataset version.
+            {description}
           </Paragraph>
         </div>
         {extra}
@@ -100,14 +115,14 @@ export const DatasetAutomaticInsightCard = ({
           />
           {onRetry ? (
             <Button type="primary" onClick={onRetry}>
-              Retry AI insight
+              {retryLabel}
             </Button>
           ) : null}
         </div>
       ) : !insight ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="An automatic AI insight has not been generated for this version yet."
+          description={emptyDescription}
         />
       ) : sections.length > 0 ? (
         <div className={styles.body}>

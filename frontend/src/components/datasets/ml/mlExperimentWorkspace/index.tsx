@@ -17,10 +17,16 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { DatasetAiAssistantLauncherButton } from "@/components/datasets/ai/datasetAiAssistantLauncherButton";
+import { DatasetAutomaticInsightCard } from "@/components/datasets/details/datasetAutomaticInsightCard";
 import {
   ML_ALGORITHM_OPTIONS,
   ML_EXPERIMENT_POLL_INTERVAL_MS,
 } from "@/constants/ml";
+import {
+  useMlExperimentAutoInsightActions,
+  useMlExperimentAutoInsightState,
+} from "@/providers/mlExperimentAutoInsightProvider";
 import type { DatasetColumn } from "@/types/datasets";
 import {
   MlExperimentStatus,
@@ -50,6 +56,7 @@ const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
 
 interface MlExperimentWorkspaceProps {
+  datasetId?: number;
   datasetVersionId?: number;
   columns: DatasetColumn[];
   hasRawFile: boolean;
@@ -161,7 +168,15 @@ const getExperimentWarnings = (experiment?: MlExperiment) => {
   return Array.from(warningSet);
 };
 
+const ML_AUTO_INSIGHT_SECTION_TITLES = [
+  "Summary",
+  "How the result looks",
+  "Risks or limitations",
+  "Suggested next steps",
+];
+
 export const MlExperimentWorkspace = ({
+  datasetId,
   datasetVersionId,
   columns,
   hasRawFile,
@@ -179,6 +194,10 @@ export const MlExperimentWorkspace = ({
     selectExperiment,
   } = useMlExperimentsActions();
   const {
+    clearLatestAutomaticInsight,
+    getLatestAutomaticInsight,
+  } = useMlExperimentAutoInsightActions();
+  const {
     errorMessage,
     experiments,
     isError,
@@ -187,6 +206,12 @@ export const MlExperimentWorkspace = ({
     isSubmittingExperiment,
     selectedExperimentId,
   } = useMlExperimentsState();
+  const {
+    errorMessage: autoInsightErrorMessage,
+    isError: isAutoInsightError,
+    isLoadingInsight,
+    latestInsight,
+  } = useMlExperimentAutoInsightState();
 
   const currentTaskType = Form.useWatch("taskType", form);
   const currentAlgorithmKey = Form.useWatch("algorithmKey", form);
@@ -257,6 +282,29 @@ export const MlExperimentWorkspace = ({
 
     form.setFieldValue("targetDatasetColumnId", undefined);
   }, [currentTaskType, form]);
+
+  const loadExperimentInsight = useEffectEvent(() => {
+    if (
+      !selectedExperiment ||
+      selectedExperiment.status !== MlExperimentStatus.Completed ||
+      !selectedExperiment.model
+    ) {
+      clearLatestAutomaticInsight();
+      return;
+    }
+
+    void getLatestAutomaticInsight(selectedExperiment.id);
+  });
+
+  useEffect(() => {
+    loadExperimentInsight();
+  }, [
+    clearLatestAutomaticInsight,
+    getLatestAutomaticInsight,
+    selectedExperiment?.id,
+    selectedExperiment?.model,
+    selectedExperiment?.status,
+  ]);
 
   const handleCreateExperiment = async (values: MlExperimentFormValues) => {
     if (!datasetVersionId) {
@@ -625,6 +673,17 @@ export const MlExperimentWorkspace = ({
                   </div>
 
                   <div className={styles.detailActions}>
+                    {datasetId ? (
+                      <DatasetAiAssistantLauncherButton
+                        datasetId={datasetId}
+                        versionId={selectedExperiment.datasetVersionId}
+                        experimentId={selectedExperiment.id}
+                        type="primary"
+                      >
+                        Ask AI about this experiment
+                      </DatasetAiAssistantLauncherButton>
+                    ) : null}
+
                     {selectedExperiment.status === MlExperimentStatus.Pending ? (
                       <Button
                         danger
@@ -680,6 +739,19 @@ export const MlExperimentWorkspace = ({
                       }
                     />
                   ) : null}
+
+                  <DatasetAutomaticInsightCard
+                    insight={latestInsight}
+                    isLoading={isLoadingInsight}
+                    isError={isAutoInsightError}
+                    errorMessage={autoInsightErrorMessage}
+                    onRetry={() => void getLatestAutomaticInsight(selectedExperiment.id)}
+                    title="AI Result Insight"
+                    description="Automatic plain-language guidance generated after this experiment completed."
+                    emptyDescription="An automatic AI insight has not been generated for this experiment yet."
+                    retryLabel="Retry result insight"
+                    expectedSectionTitles={ML_AUTO_INSIGHT_SECTION_TITLES}
+                  />
 
                   {selectedExperiment.model ? (
                     <>
