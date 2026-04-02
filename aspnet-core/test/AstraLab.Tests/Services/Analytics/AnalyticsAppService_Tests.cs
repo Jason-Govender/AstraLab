@@ -7,8 +7,11 @@ using AstraLab.Core.Domains.AI;
 using AstraLab.Core.Domains.Analytics;
 using AstraLab.Core.Domains.Datasets;
 using AstraLab.Core.Domains.ML;
+using AstraLab.Services.AI;
 using AstraLab.Services.Analytics;
 using AstraLab.Services.Analytics.Dto;
+using Castle.MicroKernel.Registration;
+using NSubstitute;
 using Shouldly;
 using Xunit;
 
@@ -16,10 +19,19 @@ namespace AstraLab.Tests.Services.Analytics
 {
     public class AnalyticsAppService_Tests : AstraLabTestBase
     {
+        private readonly IAiTextGenerationClient _aiTextGenerationClient;
         private readonly IAnalyticsAppService _analyticsAppService;
 
         public AnalyticsAppService_Tests()
         {
+            _aiTextGenerationClient = Substitute.For<IAiTextGenerationClient>();
+
+            LocalIocManager.IocContainer.Register(
+                Component.For<IAiTextGenerationClient>()
+                    .Instance(_aiTextGenerationClient)
+                    .IsDefault()
+                    .LifestyleSingleton());
+
             _analyticsAppService = Resolve<IAnalyticsAppService>();
         }
 

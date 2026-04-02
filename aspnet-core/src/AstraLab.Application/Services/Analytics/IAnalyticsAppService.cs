@@ -11,6 +11,16 @@ namespace AstraLab.Services.Analytics
     public interface IAnalyticsAppService : IApplicationService
     {
         /// <summary>
+        /// Gets the unified analytics summary for the selected dataset version.
+        /// </summary>
+        Task<DatasetAnalyticsSummaryDto> GetDatasetAnalyticsSummaryAsync(EntityDto<long> datasetVersionId);
+
+        /// <summary>
+        /// Gets the compact dashboard analytics summary for the selected dataset version.
+        /// </summary>
+        Task<AnalyticsDashboardSummaryDto> GetDatasetDashboardSummaryAsync(EntityDto<long> datasetVersionId);
+
+        /// <summary>
         /// Gets a persisted analytics insight.
         /// </summary>
         Task<InsightRecordDto> GetInsightAsync(EntityDto<long> id);

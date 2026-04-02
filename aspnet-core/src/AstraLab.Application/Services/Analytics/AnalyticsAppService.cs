@@ -20,6 +20,7 @@ namespace AstraLab.Services.Analytics
     [AbpAuthorize(PermissionNames.Pages_Datasets)]
     public class AnalyticsAppService : AstraLabAppServiceBase, IAnalyticsAppService
     {
+        private readonly IAnalyticsSummaryBuilder _analyticsSummaryBuilder;
         private readonly IRepository<InsightRecord, long> _insightRecordRepository;
         private readonly IRepository<ReportRecord, long> _reportRecordRepository;
         private readonly IRepository<AnalyticsExport, long> _analyticsExportRepository;
@@ -29,15 +30,33 @@ namespace AstraLab.Services.Analytics
         /// Initializes a new instance of the <see cref="AnalyticsAppService"/> class.
         /// </summary>
         public AnalyticsAppService(
+            IAnalyticsSummaryBuilder analyticsSummaryBuilder,
             IRepository<InsightRecord, long> insightRecordRepository,
             IRepository<ReportRecord, long> reportRecordRepository,
             IRepository<AnalyticsExport, long> analyticsExportRepository,
             IDatasetOwnershipAccessChecker datasetOwnershipAccessChecker)
         {
+            _analyticsSummaryBuilder = analyticsSummaryBuilder;
             _insightRecordRepository = insightRecordRepository;
             _reportRecordRepository = reportRecordRepository;
             _analyticsExportRepository = analyticsExportRepository;
             _datasetOwnershipAccessChecker = datasetOwnershipAccessChecker;
+        }
+
+        /// <summary>
+        /// Gets the unified analytics summary for the selected dataset version.
+        /// </summary>
+        public async Task<DatasetAnalyticsSummaryDto> GetDatasetAnalyticsSummaryAsync(EntityDto<long> datasetVersionId)
+        {
+            return await _analyticsSummaryBuilder.BuildAsync(datasetVersionId.Id, GetRequiredTenantId(), AbpSession.GetUserId());
+        }
+
+        /// <summary>
+        /// Gets the compact dashboard analytics summary for the selected dataset version.
+        /// </summary>
+        public async Task<AnalyticsDashboardSummaryDto> GetDatasetDashboardSummaryAsync(EntityDto<long> datasetVersionId)
+        {
+            return await _analyticsSummaryBuilder.BuildDashboardAsync(datasetVersionId.Id, GetRequiredTenantId(), AbpSession.GetUserId());
         }
 
         /// <summary>
