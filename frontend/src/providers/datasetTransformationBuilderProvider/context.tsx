@@ -23,6 +23,7 @@ export interface IDatasetTransformationBuilderActionContext {
   removeStep: (stepId: string) => void;
   moveStep: (stepId: string, direction: "up" | "down") => void;
   transformDatasetVersion: () => Promise<TransformDatasetVersionResult | undefined>;
+  clearFeedback: () => void;
   resetTransformation: () => void;
 }
 

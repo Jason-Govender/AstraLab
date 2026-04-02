@@ -1,57 +1,66 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import { buildWorkspaceSurfaceStyles } from "@/components/workspaceShell/workspaceSurfaceStyles";
 
-export const useStyles = createStyles(({ token, css }) => ({
-  card: css`
-    &.ant-card {
-      border-radius: 24px;
-      border-color: rgba(40, 58, 92, 0.18);
-      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
-    }
-  `,
+export const useStyles = createStyles((utils) => {
+  const { token, css } = utils;
+  const surfaces = buildWorkspaceSurfaceStyles(utils);
 
-  thread: css`
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  `,
+  return {
+    card: surfaces.sectionCard,
 
-  turn: css`
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  `,
+    titleHelper: css`
+      margin: 0 0 4px !important;
+      color: ${token.colorTextSecondary} !important;
+    `,
 
-  bubble: css`
-    padding: 16px 18px;
-    border-radius: 18px;
-    border: 1px solid rgba(40, 58, 92, 0.14);
-  `,
+    thread: css`
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    `,
 
-  userBubble: css`
-    background: rgba(15, 23, 42, 0.04);
-  `,
+    turn: css`
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    `,
 
-  assistantBubble: css`
-    background: ${token.colorPrimaryBg};
-  `,
+    bubble: css`
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(43, 62, 99, 0.9);
+    `,
 
-  bubbleHeader: css`
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-  `,
+    userBubble: css`
+      background: rgba(12, 20, 34, 0.84);
+    `,
 
-  bubbleText: css`
-    margin-bottom: 0 !important;
-    white-space: pre-wrap;
-  `,
+    assistantBubble: css`
+      background:
+        radial-gradient(circle at top right, rgba(74, 120, 255, 0.12), transparent 38%),
+        rgba(14, 24, 41, 0.95);
+      border-color: rgba(74, 120, 255, 0.32);
+    `,
 
-  helperText: css`
-    margin-bottom: 0 !important;
-    color: ${token.colorTextSecondary};
-  `,
-}));
+    bubbleHeader: css`
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    `,
+
+    bubbleText: css`
+      margin-bottom: 0 !important;
+      line-height: 1.75;
+      white-space: pre-wrap;
+    `,
+
+    helperText: css`
+      margin-bottom: 0 !important;
+      color: ${token.colorTextSecondary};
+    `,
+  };
+});

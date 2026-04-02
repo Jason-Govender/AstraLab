@@ -13,11 +13,19 @@ export const DatasetTransformationBuilderReducer = (
     case DatasetTransformationBuilderActionEnums.addStep:
       return {
         ...state,
+        isPending: false,
+        isSuccess: false,
+        isError: false,
+        errorMessage: undefined,
         steps: [...state.steps, action.payload.step],
       };
     case DatasetTransformationBuilderActionEnums.updateStep:
       return {
         ...state,
+        isPending: false,
+        isSuccess: false,
+        isError: false,
+        errorMessage: undefined,
         steps: state.steps.map((step) =>
           step.id === action.payload.step.id ? action.payload.step : step,
         ),
@@ -25,6 +33,10 @@ export const DatasetTransformationBuilderReducer = (
     case DatasetTransformationBuilderActionEnums.removeStep:
       return {
         ...state,
+        isPending: false,
+        isSuccess: false,
+        isError: false,
+        errorMessage: undefined,
         steps: state.steps.filter((step) => step.id !== action.payload.stepId),
       };
     case DatasetTransformationBuilderActionEnums.moveStep: {
@@ -49,6 +61,10 @@ export const DatasetTransformationBuilderReducer = (
 
       return {
         ...state,
+        isPending: false,
+        isSuccess: false,
+        isError: false,
+        errorMessage: undefined,
         steps: nextSteps,
       };
     }

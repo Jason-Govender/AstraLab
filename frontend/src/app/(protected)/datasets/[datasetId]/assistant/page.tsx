@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useEffectEvent } from "react";
-import { Button, Card } from "antd";
+import { Button } from "antd";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { DatasetAiAssistantWorkspace } from "@/components/datasets/ai/datasetAiAssistantWorkspace";
 import { DatasetOverviewCard } from "@/components/datasets/details/datasetOverviewCard";
 import { DatasetVersionSelector } from "@/components/datasets/details/datasetVersionSelector";
 import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetProfileSummaryCard";
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import {
   DatasetAiAssistantProvider,
@@ -52,6 +53,7 @@ const DatasetAssistantContent = () => {
     conversations,
     experimentContextErrorMessage,
     generationErrorMessage,
+    lastGeneratedResponse,
     isGenerating,
     isLoadingExperimentContext,
     isLoadingConversations,
@@ -61,6 +63,7 @@ const DatasetAssistantContent = () => {
   } = useDatasetAiAssistantState();
   const {
     askQuestion,
+    clearFeedback,
     clearConversationState,
     generateCleaningRecommendations,
     generateInsights,
@@ -256,7 +259,9 @@ const DatasetAssistantContent = () => {
         />
       ) : null}
 
-      {!details && !isError ? <Card loading className={styles.loadingCard} /> : null}
+      {!details && !isError ? (
+        <WorkspaceLoadingCard className={styles.loadingCard} />
+      ) : null}
 
       {details ? (
         <div className={styles.pageGrid}>
@@ -275,6 +280,7 @@ const DatasetAssistantContent = () => {
               conversationErrorMessage={conversationErrorMessage}
               responseErrorMessage={responseErrorMessage}
               generationErrorMessage={generationErrorMessage}
+              lastGeneratedResponse={lastGeneratedResponse}
               onSelectConversation={setActiveConversation}
               onGenerateSummary={generateSummary}
               onGenerateInsights={(datasetVersionId) => {
@@ -296,7 +302,7 @@ const DatasetAssistantContent = () => {
                   activeDatasetVersionId ?? effectiveSelectedVersionId;
 
                 if (!datasetVersionId) {
-                  return Promise.resolve();
+                  return Promise.resolve(false);
                 }
 
                 return askQuestion({
@@ -306,6 +312,7 @@ const DatasetAssistantContent = () => {
                   mlExperimentId: activeMlExperimentId,
                 });
               }}
+              onClearFeedback={clearFeedback}
             />
           </div>
 

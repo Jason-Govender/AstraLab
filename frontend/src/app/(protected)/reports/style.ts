@@ -1,11 +1,12 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import { buildWorkspaceSurfaceStyles } from "@/components/workspaceShell/workspaceSurfaceStyles";
 
-export const useStyles = createStyles(({ css }) => ({
-  actionGroup: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-  `,
-}));
+export const useStyles = createStyles((utils) => {
+  const surfaces = buildWorkspaceSurfaceStyles(utils);
+
+  return {
+    actionGroup: surfaces.actionGroup,
+  };
+});

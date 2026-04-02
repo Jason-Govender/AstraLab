@@ -1,35 +1,37 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import { buildWorkspaceSurfaceStyles } from "@/components/workspaceShell/workspaceSurfaceStyles";
 
-export const useStyles = createStyles(({ css, token }) => ({
-  card: css`
-    border-radius: 24px;
-    border: 1px solid rgba(118, 145, 191, 0.18);
-    background: rgba(17, 27, 48, 0.82);
-    box-shadow: none;
-  `,
+export const useStyles = createStyles((utils) => {
+  const { css, token } = utils;
+  const surfaces = buildWorkspaceSurfaceStyles(utils);
 
-  helperText: css`
-    margin-bottom: 16px !important;
-    color: ${token.colorTextSecondary};
-  `,
+  return {
+    card: surfaces.sectionCard,
 
-  tagWrap: css`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  `,
+    helperText: css`
+      margin-bottom: 16px !important;
+      color: ${token.colorTextSecondary};
+      line-height: 1.7;
+    `,
 
-  metricList: css`
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  `,
+    tagWrap: css`
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    `,
 
-  metricRow: css`
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-  `,
-}));
+    metricList: css`
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    `,
+
+    metricRow: css`
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    `,
+  };
+});

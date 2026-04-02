@@ -16,6 +16,7 @@ export enum DatasetTransformationBuilderActionEnums {
   transformPending = "DATASET_TRANSFORMATION_BUILDER_PENDING",
   transformSuccess = "DATASET_TRANSFORMATION_BUILDER_SUCCESS",
   transformError = "DATASET_TRANSFORMATION_BUILDER_ERROR",
+  clearFeedback = "DATASET_TRANSFORMATION_BUILDER_CLEAR_FEEDBACK",
   reset = "DATASET_TRANSFORMATION_BUILDER_RESET",
 }
 
@@ -73,6 +74,11 @@ interface ResetTransformationAction {
   payload: DatasetTransformationBuilderStatePatch;
 }
 
+interface ClearFeedbackAction {
+  type: DatasetTransformationBuilderActionEnums.clearFeedback;
+  payload: DatasetTransformationBuilderStatePatch;
+}
+
 export type DatasetTransformationBuilderAction =
   | SetSourceVersionIdAction
   | AddStepAction
@@ -82,6 +88,7 @@ export type DatasetTransformationBuilderAction =
   | TransformPendingAction
   | TransformSuccessAction
   | TransformErrorAction
+  | ClearFeedbackAction
   | ResetTransformationAction;
 
 export const setSourceVersionId = (
@@ -89,6 +96,10 @@ export const setSourceVersionId = (
 ): SetSourceVersionIdAction => ({
   type: DatasetTransformationBuilderActionEnums.setSourceVersionId,
   payload: {
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    errorMessage: undefined,
     selectedSourceVersionId: sourceVersionId,
   },
 });
@@ -181,5 +192,15 @@ export const resetTransformation = (
     selectedSourceVersionId: sourceVersionId,
     steps: [],
     transformResult: undefined,
+  },
+});
+
+export const clearFeedback = (): ClearFeedbackAction => ({
+  type: DatasetTransformationBuilderActionEnums.clearFeedback,
+  payload: {
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    errorMessage: undefined,
   },
 });

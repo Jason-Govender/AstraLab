@@ -1,8 +1,8 @@
 "use client";
 
-import { Alert } from "antd";
-import type { AIConversation, AIResponse } from "@/types/datasets";
+import { AIResponseType, type AIConversation, type AIResponse } from "@/types/datasets";
 import type { MlExperiment } from "@/types/ml";
+import { WorkspaceFeedbackAlert } from "@/components/workspaceShell/WorkspaceFeedbackAlert";
 import { DatasetAiConversationListCard } from "../datasetAiConversationListCard";
 import { DatasetAiExperimentContextCard } from "../datasetAiExperimentContextCard";
 import { DatasetAiPromptComposer } from "../datasetAiPromptComposer";
@@ -24,12 +24,30 @@ interface DatasetAiAssistantWorkspaceProps {
   conversationErrorMessage?: string;
   responseErrorMessage?: string;
   generationErrorMessage?: string;
+  lastGeneratedResponse?: AIResponse;
   onSelectConversation: (conversationId?: number) => void;
-  onGenerateSummary: (datasetVersionId: number) => Promise<void>;
-  onGenerateInsights: (datasetVersionId: number) => Promise<void>;
-  onGenerateRecommendations: (datasetVersionId: number) => Promise<void>;
-  onAskQuestion: (question: string) => Promise<void>;
+  onGenerateSummary: (datasetVersionId: number) => Promise<unknown>;
+  onGenerateInsights: (datasetVersionId: number) => Promise<unknown>;
+  onGenerateRecommendations: (datasetVersionId: number) => Promise<unknown>;
+  onAskQuestion: (question: string) => Promise<boolean>;
+  onClearFeedback?: () => void;
 }
+
+const getGenerationSuccessDescription = (response: AIResponse): string => {
+  switch (response.responseType) {
+    case AIResponseType.Summary:
+      return "The latest summary has been added to the current conversation.";
+    case AIResponseType.Recommendation:
+      return "The latest recommendations have been added to the current conversation.";
+    case AIResponseType.Explanation:
+      return "The latest explanation has been added to the current conversation.";
+    case AIResponseType.Insight:
+      return "The latest insight has been added to the current conversation.";
+    case AIResponseType.QuestionAnswer:
+    default:
+      return "The assistant added a new response to the current conversation.";
+  }
+};
 
 export const DatasetAiAssistantWorkspace = ({
   datasetVersionId,
@@ -45,11 +63,13 @@ export const DatasetAiAssistantWorkspace = ({
   conversationErrorMessage,
   responseErrorMessage,
   generationErrorMessage,
+  lastGeneratedResponse,
   onSelectConversation,
   onGenerateSummary,
   onGenerateInsights,
   onGenerateRecommendations,
   onAskQuestion,
+  onClearFeedback,
 }: DatasetAiAssistantWorkspaceProps) => {
   const { styles } = useStyles();
   const isExperimentScoped = Boolean(experiment);
@@ -75,12 +95,31 @@ export const DatasetAiAssistantWorkspace = ({
       </div>
 
       <div className={styles.mainColumn}>
+        {isGenerating ? (
+          <WorkspaceFeedbackAlert
+            type="info"
+            title="Currently running"
+            description="The assistant is preparing a response for the selected dataset context. This can take a few moments."
+          />
+        ) : null}
+
+        {lastGeneratedResponse && !isGenerating ? (
+          <WorkspaceFeedbackAlert
+            type="success"
+            title="Action completed"
+            description={getGenerationSuccessDescription(lastGeneratedResponse)}
+            closable
+            onClose={onClearFeedback}
+          />
+        ) : null}
+
         {generationErrorMessage ? (
-          <Alert
+          <WorkspaceFeedbackAlert
             type="error"
-            showIcon
-            message="Unable to generate the AI response"
+            title="Action failed"
             description={generationErrorMessage}
+            closable
+            onClose={onClearFeedback}
           />
         ) : null}
 
@@ -96,6 +135,7 @@ export const DatasetAiAssistantWorkspace = ({
           datasetVersionId={datasetVersionId}
           activeConversationId={activeConversationId}
           isSubmitting={isGenerating}
+          onInteraction={onClearFeedback}
           onSubmit={onAskQuestion}
         />
         <DatasetAiResponseThreadCard

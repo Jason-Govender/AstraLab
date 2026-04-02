@@ -1,8 +1,8 @@
 "use client";
 
-import { Alert } from "antd";
 import { DatasetProfileColumnsTable } from "@/components/datasets/shared/datasetProfileColumnsTable";
 import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetProfileSummaryCard";
+import { WorkspaceFeedbackAlert } from "@/components/workspaceShell/WorkspaceFeedbackAlert";
 import type { UploadedRawDatasetResult } from "@/types/datasets";
 import {
   buildDatasetColumnInsights,
@@ -26,10 +26,9 @@ export const DatasetUploadSuccessState = ({
 
   return (
     <div className={styles.stack}>
-      <Alert
+      <WorkspaceFeedbackAlert
         type="success"
-        showIcon
-        message="Upload complete"
+        title="Action completed"
         description="The dataset has been profiled successfully. Redirecting to the dataset details page now."
       />
 

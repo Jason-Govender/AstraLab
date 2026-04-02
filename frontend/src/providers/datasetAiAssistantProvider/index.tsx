@@ -21,6 +21,7 @@ import type {
 } from "@/types/datasets";
 import { getApiErrorMessage } from "@/utils/apiErrors";
 import {
+  clearFeedback as clearFeedbackAction,
   clearConversationState,
   generateError,
   generatePending,
@@ -159,7 +160,7 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
     datasetVersionId: number,
     mlExperimentId: number | undefined,
     request: () => Promise<GenerateDatasetAiResponseResult>,
-  ) => {
+  ): Promise<GenerateDatasetAiResponseResult | undefined> => {
     dispatch(generatePending({ datasetVersionId, mlExperimentId }));
 
     try {
@@ -172,6 +173,7 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
         }),
       );
       await reloadConversationState(datasetVersionId, result);
+      return result;
     } catch (error) {
       dispatch(
         generateError({
@@ -183,6 +185,8 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
           ),
         }),
       );
+
+      return undefined;
     }
   };
 
@@ -216,7 +220,7 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
   }: IDatasetAiAssistantAskRequest) => {
     const effectiveExperimentId = mlExperimentId ?? state.activeMlExperimentId;
 
-    await runGeneration(datasetVersionId, effectiveExperimentId, () =>
+    const result = await runGeneration(datasetVersionId, effectiveExperimentId, () =>
       effectiveExperimentId
         ? askExperimentQuestionRequest({
             mlExperimentId: effectiveExperimentId,
@@ -229,10 +233,16 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
             conversationId: conversationId ?? state.activeConversationId,
           }),
     );
+
+    return Boolean(result);
   };
 
   const setActiveConversation = (conversationId?: number) => {
     dispatch(setActiveConversationAction(conversationId));
+  };
+
+  const clearFeedback = () => {
+    dispatch(clearFeedbackAction());
   };
 
   const clearAssistantState = () => {
@@ -251,6 +261,7 @@ export const DatasetAiAssistantProvider = ({ children }: PropsWithChildren) => {
           getConversations,
           getResponses,
           setActiveConversation,
+          clearFeedback,
           clearConversationState: clearAssistantState,
         }}
       >

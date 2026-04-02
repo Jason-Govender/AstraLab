@@ -73,8 +73,28 @@ export const useStyles = createStyles(({ token, css }) => ({
   actionGroup: css`
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
     gap: 12px;
+  `,
+
+  actionPanel: css`
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(100%, 460px);
+  `,
+
+  actionCluster: css`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  `,
+
+  actionLabel: css`
+    color: ${token.colorTextSecondary};
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   `,
 
   selectorGrid: css`

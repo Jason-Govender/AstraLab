@@ -1,58 +1,35 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import { buildWorkspaceSurfaceStyles } from "@/components/workspaceShell/workspaceSurfaceStyles";
 
-export const useStyles = createStyles(({ css, token }) => ({
-  actionGroup: css`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  `,
+export const useStyles = createStyles((utils) => {
+  const { css, token } = utils;
+  const surfaces = buildWorkspaceSurfaceStyles(utils);
 
-  contentStack: css`
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  `,
+  return {
+    actionGroup: surfaces.actionGroup,
+    contentStack: surfaces.stack,
+    selectionCard: surfaces.selectionCard,
 
-  selectionCard: css`
-    border: 1px solid rgba(86, 120, 179, 0.28);
-    border-radius: 24px;
-    background:
-      radial-gradient(circle at top left, rgba(78, 115, 255, 0.16), transparent 40%),
-      radial-gradient(circle at bottom right, rgba(14, 193, 165, 0.12), transparent 35%),
-      rgba(11, 18, 34, 0.94);
-    box-shadow: none;
-  `,
+    selectionGrid: css`
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
 
-  selectionGrid: css`
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+      @media (max-width: 900px) {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    `,
 
-    @media (max-width: 900px) {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  `,
+    selectorField: surfaces.selectorField,
+    selectionMeta: css`
+      margin-top: 16px;
+      color: ${token.colorTextSecondary};
+    `,
 
-  selectionMeta: css`
-    margin-top: 16px;
-    color: ${token.colorTextSecondary};
-  `,
+    selectInput: surfaces.selectInput,
 
-  selectInput: css`
-    width: 100%;
-    margin-top: 8px;
-  `,
-
-  loadingCard: css`
-    &.ant-card {
-      min-height: 280px;
-      border-color: rgba(40, 58, 92, 0.92);
-      border-radius: 24px;
-      background: rgba(17, 26, 45, 0.94);
-      box-shadow: none;
-    }
-  `,
-}));
+    loadingCard: surfaces.loadingCard,
+  };
+});

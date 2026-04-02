@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useEffectEvent } from "react";
-import { Button, Card } from "antd";
+import { Button } from "antd";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { DatasetOverviewCard } from "@/components/datasets/details/datasetOverviewCard";
 import { DatasetVersionSelector } from "@/components/datasets/details/datasetVersionSelector";
 import { RawFileSummaryCard } from "@/components/datasets/details/rawFileSummaryCard";
 import { DatasetProfileSummaryCard } from "@/components/datasets/shared/datasetProfileSummaryCard";
 import { DatasetErrorState } from "@/components/datasets/shared/datasetErrorState";
+import { WorkspaceLoadingCard } from "@/components/workspaceShell/WorkspaceLoadingCard";
 import { WorkspacePageHeader } from "@/components/workspaceShell/WorkspacePageHeader";
 import { DatasetExplorationGuideCard } from "@/components/datasets/exploration/datasetExplorationGuideCard";
 import { DatasetExplorationWorkspace } from "@/components/datasets/exploration/datasetExplorationWorkspace";
@@ -171,13 +172,15 @@ const DatasetExplorationContent = () => {
         />
       ) : null}
 
-      {!details && !isError ? <Card loading className={styles.loadingCard} /> : null}
+      {!details && !isError ? (
+        <WorkspaceLoadingCard className={styles.loadingCard} />
+      ) : null}
 
       {details ? (
         <div className={styles.pageGrid}>
           <div className={styles.mainColumn}>
             {isLoadingColumns && !explorationColumns ? (
-              <Card loading className={styles.loadingCard} />
+              <WorkspaceLoadingCard className={styles.loadingCard} />
             ) : isColumnsError && !explorationColumns ? (
               <DatasetErrorState
                 title="Unable to load exploration metadata"
@@ -197,7 +200,7 @@ const DatasetExplorationContent = () => {
                 explorationColumns={explorationColumns}
               />
             ) : (
-              <Card loading className={styles.loadingCard} />
+              <WorkspaceLoadingCard className={styles.loadingCard} />
             )}
           </div>
 

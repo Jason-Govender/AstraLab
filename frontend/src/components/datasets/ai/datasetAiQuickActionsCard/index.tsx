@@ -9,9 +9,9 @@ interface DatasetAiQuickActionsCardProps {
   datasetVersionId?: number;
   isExperimentScoped?: boolean;
   isLoading?: boolean;
-  onGenerateSummary: (datasetVersionId: number) => Promise<void>;
-  onGenerateInsights: (datasetVersionId: number) => Promise<void>;
-  onGenerateRecommendations: (datasetVersionId: number) => Promise<void>;
+  onGenerateSummary: (datasetVersionId: number) => Promise<unknown>;
+  onGenerateInsights: (datasetVersionId: number) => Promise<unknown>;
+  onGenerateRecommendations: (datasetVersionId: number) => Promise<unknown>;
 }
 
 export const DatasetAiQuickActionsCard = ({

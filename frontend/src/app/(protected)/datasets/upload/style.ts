@@ -1,51 +1,55 @@
 "use client";
 
 import { createStyles } from "antd-style";
+import { buildWorkspaceSurfaceStyles } from "@/components/workspaceShell/workspaceSurfaceStyles";
 
-export const useStyles = createStyles(({ token, css }) => ({
-  pageGrid: css`
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
-    gap: 24px;
+export const useStyles = createStyles((utils) => {
+  const { token, css } = utils;
+  const surfaces = buildWorkspaceSurfaceStyles(utils);
 
-    @media (max-width: 1080px) {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  `,
+  return {
+    actionGroup: surfaces.actionGroup,
+    pageGrid: css`
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.92fr);
+      gap: 24px;
 
-  mainColumn: css`
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  `,
+      @media (max-width: 1080px) {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    `,
 
-  sideColumn: css`
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  `,
+    mainColumn: css`
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    `,
 
-  actionGroup: css`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  `,
+    sideColumn: css`
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    `,
 
-  helperCard: css`
-    &.ant-card {
-      border-color: rgba(40, 58, 92, 0.92);
-      border-radius: 24px;
-      background: rgba(17, 26, 45, 0.94);
-      box-shadow: none;
-    }
-  `,
+    helperCard: surfaces.sectionCard,
 
-  helperTitle: css`
-    color: ${token.colorText} !important;
-  `,
+    helperTitle: css`
+      margin: 0 !important;
+      color: ${token.colorText} !important;
+    `,
 
-  helperText: css`
-    color: ${token.colorTextSecondary} !important;
-  `,
-}));
+    helperText: css`
+      color: ${token.colorTextSecondary} !important;
+      line-height: 1.7;
+    `,
+
+    helperList: css`
+      margin: 0;
+      padding-left: 18px;
+      color: ${token.colorTextSecondary};
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    `,
+  };
+});

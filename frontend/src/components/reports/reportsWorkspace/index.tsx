@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Card, Empty, Select, Tag, Typography } from "antd";
+import { Button, Card, Empty, Select, Tag, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import type {
   AnalyticsExport,
@@ -11,6 +11,8 @@ import type {
 } from "@/types/analytics";
 import type { DatasetDetails, DatasetListItem } from "@/types/datasets";
 import { DatasetVersionType } from "@/types/datasets";
+import { WorkspaceEmptyState } from "@/components/workspaceShell/WorkspaceEmptyState";
+import { WorkspaceFeedbackAlert } from "@/components/workspaceShell/WorkspaceFeedbackAlert";
 import {
   formatBytes,
   formatDateTime,
@@ -181,31 +183,64 @@ export const ReportsWorkspace = ({
             </div>
           </div>
 
-          <div className={styles.actionGroup}>
-            <Button onClick={onRefresh}>Refresh</Button>
-            <Button
-              onClick={() =>
-                router.push(buildDatasetDetailsHref(selectedDatasetId, selectedDatasetVersionId))
-              }
-              disabled={!selectedDatasetId}
-            >
-              Open details
-            </Button>
-            <DatasetAiAssistantLauncherButton
-              datasetId={selectedDatasetId || 0}
-              versionId={selectedDatasetVersionId}
-              disabled={!selectedDatasetId}
-            >
-              Open assistant
-            </DatasetAiAssistantLauncherButton>
-            <Button
-              onClick={() =>
-                router.push(buildMlWorkspaceHref(selectedDatasetId, selectedDatasetVersionId))
-              }
-              disabled={!selectedDatasetId}
-            >
-              Open ML workspace
-            </Button>
+          <div className={styles.actionPanel}>
+            <div className={styles.actionCluster}>
+              <Text className={styles.actionLabel}>Explore</Text>
+              <div className={styles.actionGroup}>
+                <Button onClick={onRefresh}>Refresh</Button>
+                <Button
+                  onClick={() =>
+                    router.push(buildDatasetDetailsHref(selectedDatasetId, selectedDatasetVersionId))
+                  }
+                  disabled={!selectedDatasetId}
+                >
+                  Open details
+                </Button>
+                <DatasetAiAssistantLauncherButton
+                  datasetId={selectedDatasetId || 0}
+                  versionId={selectedDatasetVersionId}
+                  disabled={!selectedDatasetId}
+                >
+                  Open assistant
+                </DatasetAiAssistantLauncherButton>
+                <Button
+                  onClick={() =>
+                    router.push(buildMlWorkspaceHref(selectedDatasetId, selectedDatasetVersionId))
+                  }
+                  disabled={!selectedDatasetId}
+                >
+                  Open ML workspace
+                </Button>
+              </div>
+            </div>
+
+            <div className={styles.actionCluster}>
+              <Text className={styles.actionLabel}>Generate and export</Text>
+              <div className={styles.actionGroup}>
+                <Button
+                  type="primary"
+                  loading={isGeneratingReport}
+                  onClick={onGenerateReport}
+                  disabled={!selectedDatasetVersionId}
+                >
+                  Generate report
+                </Button>
+                <Button
+                  loading={isExportingPdf}
+                  onClick={() => onExportPdf(selectedReport?.id)}
+                  disabled={!selectedDatasetVersionId}
+                >
+                  Export selected PDF
+                </Button>
+                <Button
+                  loading={isExportingCsv}
+                  onClick={() => onExportCsv(selectedReport?.id)}
+                  disabled={!selectedDatasetVersionId}
+                >
+                  Export highlights CSV
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -243,46 +278,55 @@ export const ReportsWorkspace = ({
         </div>
 
         {datasetErrorMessage ? (
-          <Alert type="error" showIcon message="Unable to load datasets" description={datasetErrorMessage} />
+          <WorkspaceFeedbackAlert
+            type="error"
+            title="Unable to load"
+            description={datasetErrorMessage}
+            actionLabel="Retry"
+            onAction={onRefresh}
+          />
         ) : null}
 
         {contextErrorMessage ? (
-          <Alert type="error" showIcon message="Unable to load reports workspace" description={contextErrorMessage} />
+          <WorkspaceFeedbackAlert
+            type="error"
+            title="Unable to load"
+            description={contextErrorMessage}
+            actionLabel="Retry"
+            onAction={onRefresh}
+          />
         ) : null}
 
         {actionErrorMessage ? (
-          <Alert
+          <WorkspaceFeedbackAlert
             type="error"
-            showIcon
+            className={styles.feedbackAlert}
+            title="Action failed"
+            description={actionErrorMessage}
             closable
             onClose={onClearFeedback}
-            className={styles.feedbackAlert}
-            message="Reporting action failed"
-            description={actionErrorMessage}
           />
         ) : null}
 
         {lastGeneratedReport ? (
-          <Alert
+          <WorkspaceFeedbackAlert
             type="success"
-            showIcon
+            className={styles.feedbackAlert}
+            title="Action completed"
+            description={`Saved "${lastGeneratedReport.report.title}" for this dataset version.`}
             closable
             onClose={onClearFeedback}
-            className={styles.feedbackAlert}
-            message="Report generated"
-            description={`Saved "${lastGeneratedReport.report.title}" for this dataset version.`}
           />
         ) : null}
 
         {lastGeneratedExport ? (
-          <Alert
+          <WorkspaceFeedbackAlert
             type="success"
-            showIcon
+            className={styles.feedbackAlert}
+            title="Action completed"
+            description={`${lastGeneratedExport.export.displayName} is ready to download.`}
             closable
             onClose={onClearFeedback}
-            className={styles.feedbackAlert}
-            message="Export ready"
-            description={`${lastGeneratedExport.export.displayName} is ready to download.`}
             action={
               lastGeneratedExport.export.downloadUrl ? (
                 <Button
@@ -299,26 +343,20 @@ export const ReportsWorkspace = ({
       </Card>
 
       {!selectedDatasetId && recentDatasets.length === 0 && !isLoadingDatasets ? (
-        <Card className={styles.card}>
-          <Empty
-            className={styles.emptyCompact}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No datasets are available yet. Upload a dataset to start generating reports and exports."
-          />
-        </Card>
+        <WorkspaceEmptyState
+          className={styles.card}
+          description="No datasets are available yet. Upload a dataset to start generating reports and exports."
+        />
       ) : null}
 
       {selectedDatasetId &&
       selectedDatasetDetails &&
       selectedDatasetDetails.versions.length === 0 &&
       !isLoadingContext ? (
-        <Card className={styles.card}>
-          <Empty
-            className={styles.emptyCompact}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="This dataset does not have any versions yet, so there are no reports to show."
-          />
-        </Card>
+        <WorkspaceEmptyState
+          className={styles.card}
+          description="This dataset does not have any versions yet, so there are no reports to show."
+        />
       ) : null}
 
       <div className={styles.contentGrid}>

@@ -44,6 +44,9 @@ export const DatasetAiResponseThreadCard = ({
   return (
     <Card loading={isLoading} className={styles.card}>
       <Title level={4}>Assistant thread</Title>
+      <Paragraph className={styles.titleHelper}>
+        User prompts and stored AI replies are shown in chronological order so the conversation stays easy to scan.
+      </Paragraph>
 
       {isError ? (
         <Alert
