@@ -19,7 +19,7 @@ namespace AstraLab.Tests.Services.AI
             var handler = new CapturingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(
-                    "{\"id\":\"resp_123\",\"model\":\"llama-test\",\"output\":[{\"content\":[{\"text\":\"Dataset looks healthy.\"}]}],\"usage\":{\"output_tokens\":12}}",
+                    "{\"id\":\"resp_123\",\"model\":\"llama-test\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Dataset looks healthy.\"}]}],\"usage\":{\"output_tokens\":12}}",
                     Encoding.UTF8,
                     "application/json")
             });
@@ -52,7 +52,7 @@ namespace AstraLab.Tests.Services.AI
             handler.RequestUri.AbsoluteUri.ShouldBe("https://api.groq.com/openai/v1/responses");
             handler.AuthorizationHeader.ShouldBe("Bearer groq-key");
             handler.RequestBody.ShouldContain("\"model\":\"llama-test\"");
-            handler.RequestBody.ShouldContain("\"maxOutputTokens\":321");
+            handler.RequestBody.ShouldContain("\"max_output_tokens\":321");
             handler.RequestBody.ShouldContain("\"effort\":\"medium\"");
             handler.RequestBody.ShouldContain("System prompt");
             handler.RequestBody.ShouldContain("Previous answer");
@@ -63,6 +63,36 @@ namespace AstraLab.Tests.Services.AI
             result.ProviderResponseId.ShouldBe("resp_123");
             result.Text.ShouldBe("Dataset looks healthy.");
             result.UsageJson.ShouldContain("output_tokens");
+        }
+
+        [Fact]
+        public async Task GenerateTextAsync_Should_Not_Treat_Reasoning_Text_As_Final_Output_When_OutputText_Is_Missing()
+        {
+            var handler = new CapturingMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"id\":\"resp_456\",\"model\":\"llama-test\",\"output\":[{\"type\":\"reasoning\",\"content\":[{\"type\":\"reasoning_text\",\"text\":\"Internal reasoning.\"}]},{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Final answer.\"}]}]}",
+                    Encoding.UTF8,
+                    "application/json")
+            });
+            var client = new GroqAiTextGenerationClient(
+                new FakeHttpClientFactory(new HttpClient(handler)),
+                new GroqAiOptions
+                {
+                    BaseUrl = "https://api.groq.com/openai/v1",
+                    ApiKey = "groq-key",
+                    Model = "llama-test",
+                    TimeoutSeconds = 30,
+                    MaxOutputTokens = 321
+                });
+
+            var result = await client.GenerateTextAsync(new AiTextGenerationRequest
+            {
+                SystemInstructions = "System prompt",
+                UserMessage = "Current question"
+            });
+
+            result.Text.ShouldBe("Final answer.");
         }
 
         [Fact]

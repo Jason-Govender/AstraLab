@@ -3,6 +3,7 @@
 import { Button } from "antd";
 import type { ButtonProps } from "antd";
 import { useRouter } from "next/navigation";
+import { buildAiAssistantHref } from "@/utils/aiAssistant";
 
 interface DatasetAiAssistantLauncherButtonProps extends ButtonProps {
   datasetId: number;
@@ -19,19 +20,11 @@ export const DatasetAiAssistantLauncherButton = ({
 }: DatasetAiAssistantLauncherButtonProps) => {
   const router = useRouter();
 
-  const searchParams = new URLSearchParams();
-
-  if (versionId) {
-    searchParams.set("versionId", String(versionId));
-  }
-
-  if (experimentId) {
-    searchParams.set("experimentId", String(experimentId));
-  }
-
-  const href = searchParams.toString()
-    ? `/datasets/${datasetId}/assistant?${searchParams.toString()}`
-    : `/datasets/${datasetId}/assistant`;
+  const href = buildAiAssistantHref({
+    datasetId,
+    versionId,
+    experimentId,
+  });
 
   return (
     <Button
